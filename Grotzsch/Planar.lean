@@ -54,11 +54,21 @@ theorem card_edgeFinset_eq_natCard (G : SimpleGraph V) [Fintype G.edgeSet] :
 
 /-- If every face of a plane map has at least five darts and there are no isolated vertices,
 then `3|E| + 10 ≤ 5|V|`. -/
-theorem three_mul_card_edgeFinset_add_ten_le (M : PlaneMap G) [Nonempty G.Dart]
+theorem three_mul_card_edgeSet_add_ten_le (M : PlaneMap G) [Nonempty G.Dart]
     (hiso : ∀ v, ∃ u, G.Adj v u)
     (h5 : ∀ d : G.Dart, 5 ≤ Nat.card {e // SameCycle M.facePerm d e}) :
-    3 * G.edgeFinset.card + 10 ≤ 5 * Fintype.card V := by
-  sorry
+    3 * Nat.card G.edgeSet + 10 ≤ 5 * Fintype.card V := by
+  have h0 := M.eulerDefect_eq_zero
+  have hα := card_dart_eq_two_mul G
+  have hE := card_edgeSet_eq_cycleCount (G := G)
+  have hφ : 5 * cycleCount (M.rot * dartSymm _) ≤ Nat.card G.Dart :=
+    mul_numClasses_le _ 5 fun d => h5 d
+  have hK := one_le_numComponents M.rot (dartSymm G)
+  have hn := cycleCount_eq_card_nonisolated M.isRotationSystem
+  have hn' : Nat.card {v // ∃ u, G.Adj v u} = Fintype.card V := by
+    rw [Nat.card_congr (Equiv.subtypeUnivEquiv hiso), Nat.card_eq_fintype_card]
+  unfold eulerDefect at h0
+  omega
 
 /-- A face with at most four darts in a triangle-free plane graph of minimum degree `≥ 2` is a
 4-cycle `x y z u` on four distinct vertices, and the face is vertex-injective. -/
@@ -88,7 +98,50 @@ theorem isPlanar_glue (M : PlaneMap G) (o : G.Dart)
     (hinj : ∀ e e' : FaceApex.F M o, e.1.fst = e'.1.fst → e = e') {x z : V} (hxz : x ≠ z)
     (hx : x ∈ FaceApex.faceVerts M o) (hz : z ∈ FaceApex.faceVerts M o) :
     IsPlanar (glue G x z) := by
-  sorry
+  have hP := isPlanar_apexExtend_face M o hinj
+  -- branch sets in the graph with an apex inside the face
+  let br : {v // v ≠ z} → Finset (Option V) := fun w =>
+    if w.1 = x then {some x, some z, none} else {some w.1}
+  have hmem : ∀ w : {v // v ≠ z}, some w.1 ∈ br w := fun w => by
+    by_cases hw : w.1 = x
+    · simp [br, hw]
+    · simp [br, hw]
+  refine isPlanar_of_minorModel hP
+    { branch := br
+      branch_nonempty := fun w => ⟨_, hmem w⟩
+      branch_connected := fun w => ?_
+      branch_disjoint := fun w w' hww' => ?_
+      branch_adjacent := fun a b hab => ?_ }
+  · rw [← connSet_iff_induce_connected]
+    by_cases hw : w.1 = x
+    · have h1 : ConnSet (apexExtend G (FaceApex.faceVerts M o)) ({some z, none} : Set (Option V)) :=
+        (connSet_singleton _ none).insert_adj (Set.mem_singleton _) hz
+      have h2 := h1.insert_adj (a := some x) (Set.mem_insert_of_mem _ (Set.mem_singleton _)) hx
+      simpa [br, hw] using h2
+    · simpa [br, hw] using connSet_singleton (apexExtend G (FaceApex.faceVerts M o)) (some w.1)
+  · rw [Finset.disjoint_left]
+    intro p hp hp'
+    have hne : w.1 ≠ w'.1 := fun h => hww' (Subtype.ext h)
+    by_cases hw : w.1 = x <;> by_cases hw' : w'.1 = x
+    · exact hne (hw.trans hw'.symm)
+    · simp only [br, hw, hw', ite_true, ite_false, Finset.mem_insert, Finset.mem_singleton] at hp hp'
+      subst hp'
+      rcases hp with h | h | h
+      · exact hw' (Option.some_injective _ h)
+      · exact w'.2 (Option.some_injective _ h)
+      · exact Option.some_ne_none _ h
+    · simp only [br, hw, hw', ite_true, ite_false, Finset.mem_insert, Finset.mem_singleton] at hp hp'
+      subst hp
+      rcases hp' with h | h | h
+      · exact hw (Option.some_injective _ h)
+      · exact w.2 (Option.some_injective _ h)
+      · exact Option.some_ne_none _ h
+    · simp only [br, hw, hw', ite_false, Finset.mem_singleton] at hp hp'
+      exact hne (Option.some_injective _ (hp.symm.trans hp'))
+  · rcases hab.2 with h | ⟨ha, h⟩ | ⟨hb, h⟩
+    · exact ⟨_, hmem a, _, hmem b, h⟩
+    · refine ⟨some z, by simp [br, ha], _, hmem b, h⟩
+    · refine ⟨_, hmem a, some z, by simp [br, hb], h.symm⟩
 
 /-- A 3-colouring of the identified graph gives a 3-colouring of `G` (if `x z` is not an edge). -/
 theorem colorable_of_glue {x z : V} (hxz : x ≠ z) (hadj : ¬ G.Adj x z)
@@ -157,7 +210,27 @@ theorem exists_path_of_not_cliqueFree_glue (h3 : G.CliqueFree 3) {x z : V} (hxz 
 /-- Identifying two vertices does not increase the number of edges. -/
 theorem card_edgeSet_glue_le (x z : V) (hxz : x ≠ z) :
     Nat.card (glue G x z).edgeSet ≤ Nat.card G.edgeSet := by
-  sorry
+  let f : V → {v // v ≠ z} := fun v => if h : v = z then ⟨x, hxz⟩ else ⟨v, h⟩
+  have hf : ∀ w : {v // v ≠ z}, f w.1 = w := fun w => by simp [f, w.2]
+  have hfz : f z = ⟨x, hxz⟩ := by simp [f]
+  have hpre : ∀ e : (glue G x z).edgeSet, ∃ e' : G.edgeSet, Sym2.map f e'.1 = e.1 := by
+    rintro ⟨e, he⟩
+    induction e using Sym2.ind with
+    | _ a b =>
+    have hab : (glue G x z).Adj a b := he
+    rcases hab.2 with h | ⟨ha, h⟩ | ⟨hb, h⟩
+    · exact ⟨⟨s(a.1, b.1), h⟩, by simp [hf]⟩
+    · refine ⟨⟨s(z, b.1), h⟩, ?_⟩
+      show s(f z, f b.1) = s(a, b)
+      rw [hfz, hf]
+      exact congrArg (fun p => s(p, b)) (Subtype.ext ha.symm)
+    · refine ⟨⟨s(a.1, z), h.symm⟩, ?_⟩
+      show s(f a.1, f z) = s(a, b)
+      rw [hfz, hf]
+      exact congrArg (fun p => s(a, p)) (Subtype.ext hb.symm)
+  choose g hg using hpre
+  exact Nat.card_le_card_of_injective g fun e₁ e₂ h =>
+    Subtype.ext ((hg e₁).symm.trans (h ▸ hg e₂))
 
 /-! ### No two crossing paths through a face -/
 
@@ -203,7 +276,7 @@ theorem grotzsch_aux : ∀ (n : ℕ) (V : Type) [Fintype V] (G : SimpleGraph V),
     · have hlt : Nat.card (G.deleteEdges {e}).edgeSet < Nat.card G.edgeSet := by
         rw [Nat.card_coe_set_eq, Nat.card_coe_set_eq]
         refine Set.ncard_lt_ncard ?_ (Set.toFinite _)
-        refine HasSubset.Subset.ssubset_of_ne
+        refine LE.le.ssubset_of_ne
           (SimpleGraph.edgeSet_mono (G.deleteEdges_le _)) fun h => ?_
         have : e ∈ (G.deleteEdges {e}).edgeSet := by rw [h]; exact he
         simp at this
@@ -228,8 +301,7 @@ theorem grotzsch_aux : ∀ (n : ℕ) (V : Type) [Fintype V] (G : SimpleGraph V),
     exact ⟨⟨(v, u), hu⟩⟩
   obtain ⟨M⟩ := hP
   by_cases hall : ∀ d : G.Dart, 5 ≤ Nat.card {e // SameCycle M.facePerm d e}
-  · have := three_mul_card_edgeFinset_add_ten_le M hiso hall
-    rw [card_edgeFinset_eq_natCard] at this
+  · have := three_mul_card_edgeSet_add_ten_le M hiso hall
     omega
   push Not at hall
   obtain ⟨d, hd⟩ := hall
