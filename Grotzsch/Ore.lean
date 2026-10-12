@@ -718,16 +718,290 @@ theorem MinCounter.claim11 (hG : MinCounter G) (R : Finset V) (h4 : R.card = 4) 
   · have := hG.claim10 R hR (by omega) (by unfold pot; rw [h4]; push_cast; omega)
     omega
 
+/-- The neighbourhood of a degree-3 vertex `x` with a known neighbour `y`. -/
+private lemma t3_nbr2 {x y : V} (hx : G.degree x = 3) (hxy : G.Adj x y) :
+    ∃ a b, a ≠ b ∧ a ≠ y ∧ b ≠ y ∧ G.Adj x a ∧ G.Adj x b ∧
+      ∀ w, G.Adj x w → w = y ∨ w = a ∨ w = b := by
+  have hy : y ∈ G.neighborFinset x := (G.mem_neighborFinset x y).2 hxy
+  have hc : ((G.neighborFinset x).erase y).card = 2 := by
+    rw [card_erase_of_mem hy, G.card_neighborFinset_eq_degree, hx]
+  obtain ⟨a, b, hab, he⟩ := card_eq_two.1 hc
+  have ha : a ∈ (G.neighborFinset x).erase y := he ▸ mem_insert_self a {b}
+  have hb : b ∈ (G.neighborFinset x).erase y := he ▸ mem_insert_of_mem (mem_singleton_self b)
+  rw [mem_erase, G.mem_neighborFinset] at ha hb
+  refine ⟨a, b, hab, ha.1, hb.1, ha.2, hb.2, fun w hw => ?_⟩
+  by_cases hwy : w = y
+  · exact Or.inl hwy
+  · have : w ∈ (G.neighborFinset x).erase y :=
+      mem_erase.2 ⟨hwy, (G.mem_neighborFinset x w).2 hw⟩
+    rw [he, mem_insert, mem_singleton] at this
+    exact Or.inr this
+
+/-- The neighbourhood of a degree-3 vertex `x` with two known neighbours `y`, `z`. -/
+private lemma t3_nbr3 {x y z : V} (hx : G.degree x = 3) (hxy : G.Adj x y) (hxz : G.Adj x z)
+    (hyz : y ≠ z) :
+    ∃ a, a ≠ y ∧ a ≠ z ∧ G.Adj x a ∧ ∀ w, G.Adj x w → w = y ∨ w = z ∨ w = a := by
+  obtain ⟨a, b, hab, hay, hby, ha, hb, h⟩ := t3_nbr2 hx hxy
+  rcases h z hxz with h1 | h1 | h1
+  · exact absurd h1.symm hyz
+  · subst h1
+    exact ⟨b, hby, hab.symm, hb, fun w hw => by rcases h w hw with h2 | h2 | h2 <;> tauto⟩
+  · subst h1
+    exact ⟨a, hay, hab, ha, fun w hw => by rcases h w hw with h2 | h2 | h2 <;> tauto⟩
+
+omit [Fintype V] in
+/-- Extending a colouring of `G - x - y` to the adjacent vertices `x`, `y`. -/
+private lemma t3_glue {x y : V} (phi : V → Fin 3) (cx cy : Fin 3) (hcxy : cx ≠ cy)
+    (hphi : ∀ s t, s ≠ x → s ≠ y → t ≠ x → t ≠ y → G.Adj s t → phi s ≠ phi t)
+    (hx : ∀ t, G.Adj x t → t ≠ y → cx ≠ phi t)
+    (hy : ∀ t, G.Adj y t → t ≠ x → cy ≠ phi t) : G.Colorable 3 := by
+  refine ⟨SimpleGraph.Coloring.mk (fun w => if w = x then cx else if w = y then cy else phi w) ?_⟩
+  intro s t hst
+  have hts : t ≠ s := (G.ne_of_adj hst).symm
+  by_cases hsx : s = x
+  · rw [ite_eq_left hsx, ite_eq_right (hsx ▸ hts)]
+    by_cases hty : t = y
+    · rw [ite_eq_left hty]; exact hcxy
+    · rw [ite_eq_right hty]; exact hx t (hsx ▸ hst) hty
+  by_cases hsy : s = y
+  · rw [ite_eq_right hsx, ite_eq_left hsy]
+    by_cases htx : t = x
+    · rw [ite_eq_left htx]; exact hcxy.symm
+    · rw [ite_eq_right htx, ite_eq_right (hsy ▸ hts)]; exact hy t (hsy ▸ hst) htx
+  rw [ite_eq_right hsx, ite_eq_right hsy]
+  by_cases htx : t = x
+  · rw [ite_eq_left htx]; exact (hx s (htx ▸ hst.symm) hsy).symm
+  by_cases hty : t = y
+  · rw [ite_eq_right htx, ite_eq_left hty]; exact (hy s (hty ▸ hst.symm) hsx).symm
+  rw [ite_eq_right htx, ite_eq_right hty]
+  exact hphi s t hsx hsy htx hty hst
+
 /-- **Claim 12.** Each triangle contains at most one vertex of degree 3. -/
 theorem MinCounter.claim12 (hG : MinCounter G) {x y z : V} (hxy : G.Adj x y) (hyz : G.Adj y z)
     (hxz : G.Adj x z) (hx : G.degree x = 3) (hy : G.degree y = 3) : False := by
-  sorry
+  have hxy' := G.ne_of_adj hxy
+  have hxz' := G.ne_of_adj hxz
+  have hyz' := G.ne_of_adj hyz
+  obtain ⟨a, hay, haz, hxa, hNx⟩ := t3_nbr3 hx hxy hxz hyz'
+  obtain ⟨b, hbx, hbz, hyb, hNy⟩ := t3_nbr3 hy hxy.symm hyz hxz'
+  have hax : a ≠ x := (G.ne_of_adj hxa).symm
+  have hby : b ≠ y := (G.ne_of_adj hyb).symm
+  have hab : a ≠ b := by
+    rintro rfl
+    have h4 : ({x, y, z, a} : Finset V).card = 4 := by
+      rw [card_insert_of_notMem (by simp [hxy', hxz', hax.symm]),
+        card_insert_of_notMem (by simp [hyz', hay.symm]), card_pair haz.symm]
+    have h11 := hG.claim11 _ h4
+    have h2 := t2_two_eIn G ({x, y, z, a} : Finset V)
+    have hc : 10 ≤ t2_cross G ({x, y, z, a} : Finset V) {x, y, z, a} := by
+      simp [t2_cross, sum_insert, hxy', hxz', hax.symm, hyz', hay.symm, haz.symm, hxy, hyz,
+        hxz, hxa, hyb, hxy.symm, hyz.symm, hxz.symm, hxa.symm, hyb.symm]
+      omega
+    omega
+  have hmem : ∀ w, w ∈ (univ.erase x).erase y ↔ w ≠ x ∧ w ≠ y := by
+    intro w; simp only [mem_erase, mem_univ, and_true]; tauto
+  have hRu : (univ.erase x).erase y ≠ univ := fun h =>
+    ((hmem x).1 (by rw [h]; exact mem_univ x)).1 rfl
+  obtain ⟨phi, hphi, hphiab⟩ := t2_color_plus_edge hG _ hRu a b ((hmem a).2 ⟨hax, hay⟩)
+    ((hmem b).2 ⟨hbx, hby⟩) hab
+  have key : ∀ p q r : Fin 3, p ≠ q → ∃ cx cy : Fin 3,
+      cx ≠ p ∧ cx ≠ r ∧ cy ≠ q ∧ cy ≠ r ∧ cx ≠ cy := by decide
+  obtain ⟨cx, cy, h1, h2, h3, h4, h5⟩ := key _ _ (phi z) hphiab
+  apply hG.crit.not_colorable
+  refine t3_glue phi cx cy h5
+    (fun s t hsx hsy htx hty hst => hphi s ((hmem s).2 ⟨hsx, hsy⟩) t ((hmem t).2 ⟨htx, hty⟩) hst)
+    ?_ ?_
+  · intro t ht hty
+    rcases hNx t ht with rfl | rfl | rfl
+    · exact absurd rfl hty
+    · exact h2
+    · exact h1
+  · intro t ht htx
+    rcases hNy t ht with rfl | rfl | rfl
+    · exact absurd rfl htx
+    · exact h4
+    · exact h3
+
+/-- The vertex set of `G - x - y - v`. -/
+private def t3_R (x y v : V) : Finset V := ((univ.erase x).erase y).erase v
+
+/-- The graph `G - x - y` in which `v` is merged into `u`. -/
+private def t3_G' (H : SimpleGraph V) (x y v u : V) : SimpleGraph (t3_R x y v) :=
+  SimpleGraph.fromRel fun a b => H.Adj a b ∨ ((a : V) = u ∧ H.Adj v b)
+
+private lemma t3_mem {x y v w : V} : w ∈ t3_R x y v ↔ w ≠ x ∧ w ≠ y ∧ w ≠ v := by
+  simp only [t3_R, mem_erase, mem_univ, and_true]; tauto
+
+/-- A 3-colouring of the merged graph extends to a 3-colouring of `G`. -/
+private lemma t3_extend {x y u v p q : V} (hxu : G.Adj x u) (huv : u ≠ v) (huy : u ≠ y)
+    (hnuv : ¬ G.Adj u v) (hNx : ∀ w, G.Adj x w → w = y ∨ w = u ∨ w = v)
+    (hNy : ∀ w, G.Adj y w → w = x ∨ w = p ∨ w = q)
+    (hcol : (t3_G' G x y v u).Colorable 3) : G.Colorable 3 := by
+  obtain ⟨c⟩ := hcol
+  have hux : u ≠ x := (G.ne_of_adj hxu).symm
+  have huR : u ∈ t3_R x y v := t3_mem.2 ⟨hux, huy, huv⟩
+  have hvR : v ∉ t3_R x y v := fun h => (t3_mem.1 h).2.2 rfl
+  let psi : V → Fin 3 := fun w => if h : w ∈ t3_R x y v then c ⟨w, h⟩ else c ⟨u, huR⟩
+  have hpsiv : psi v = psi u := by simp only [psi, dite_eq_right hvR, dite_eq_left huR]
+  have key : ∀ s t, s ≠ x → s ≠ y → t ≠ x → t ≠ y → s ≠ v → G.Adj s t → psi s ≠ psi t := by
+    intro s t hsx hsy htx hty hsv hst
+    have hsR : s ∈ t3_R x y v := t3_mem.2 ⟨hsx, hsy, hsv⟩
+    by_cases htv : t = v
+    · have hsu : s ≠ u := fun h => hnuv (h ▸ htv ▸ hst)
+      have ht : psi t = c ⟨u, huR⟩ := by rw [htv, hpsiv]; simp only [psi, dite_eq_left huR]
+      rw [ht]
+      simp only [psi, dite_eq_left hsR]
+      apply c.valid
+      rw [t3_G', SimpleGraph.fromRel_adj]
+      exact ⟨fun h => hsu (congrArg Subtype.val h), Or.inr (Or.inr ⟨rfl, htv ▸ hst.symm⟩)⟩
+    · have htR : t ∈ t3_R x y v := t3_mem.2 ⟨htx, hty, htv⟩
+      simp only [psi, dite_eq_left hsR, dite_eq_left htR]
+      apply c.valid
+      rw [t3_G', SimpleGraph.fromRel_adj]
+      exact ⟨fun h => G.ne_of_adj hst (congrArg Subtype.val h), Or.inl (Or.inl hst)⟩
+  have hpsi : ∀ s t, s ≠ x → s ≠ y → t ≠ x → t ≠ y → G.Adj s t → psi s ≠ psi t := by
+    intro s t hsx hsy htx hty hst
+    by_cases hsv : s = v
+    · have htv : t ≠ v := fun h => G.ne_of_adj hst (hsv.trans h.symm)
+      exact (key t s htx hty hsx hsy htv hst.symm).symm
+    · exact key s t hsx hsy htx hty hsv hst
+  have hch : ∀ a b d : Fin 3, ∃ cy cx : Fin 3, cy ≠ a ∧ cy ≠ b ∧ cx ≠ cy ∧ cx ≠ d := by decide
+  obtain ⟨cy, cx, h1, h2, h3, h4⟩ := hch (psi p) (psi q) (psi u)
+  refine t3_glue psi cx cy h3 hpsi ?_ ?_
+  · intro t ht hty
+    rcases hNx t ht with rfl | rfl | rfl
+    · exact absurd rfl hty
+    · exact h4
+    · rw [hpsiv]; exact h4
+  · intro t ht htx
+    rcases hNy t ht with rfl | rfl | rfl
+    · exact absurd rfl htx
+    · exact h1
+    · exact h2
+
+/-- The potential estimate for un-merging a set containing the merged vertex. -/
+private lemma t3_pot {x y u v : V} (hxu : G.Adj x u) (hxv : G.Adj x v) (hvx : v ≠ x)
+    (hvy : v ≠ y) (hxy : x ≠ y)
+    (huR : u ∈ t3_R x y v) (S : Finset (t3_R x y v)) (hu0 : (⟨u, huR⟩ : t3_R x y v) ∈ S) :
+    ∃ T : Finset V, y ∉ T ∧ T.card = S.card + 2 ∧ pot G T ≤ pot (t3_G' G x y v u) S + 4 := by
+  set S' := S.map (Function.Embedding.subtype (· ∈ t3_R x y v)) with hS'
+  have hdisj : Disjoint S' {v, x} := by
+    rw [disjoint_iff_ne]
+    rintro a ha b hb rfl
+    obtain ⟨c, -, rfl⟩ := mem_map.1 ha
+    have := t3_mem.1 c.2
+    rw [mem_insert, mem_singleton] at hb
+    rcases hb with h | h
+    exacts [this.2.2 h, this.1 h]
+  have hcard : (S' ∪ {v, x}).card = S.card + 2 := by
+    rw [card_union_of_disjoint hdisj, card_map, card_pair hvx]
+  refine ⟨S' ∪ {v, x}, ?_, hcard, ?_⟩
+  · rw [mem_union, mem_insert, mem_singleton]
+    rintro (h | h | h)
+    · obtain ⟨c, -, hc⟩ := mem_map.1 h
+      exact (t3_mem.1 c.2).2.1 hc
+    · exact hvy h.symm
+    · exact hxy h.symm
+  have hpT := t2_two_pot G (S' ∪ {v, x})
+  have hpS := t2_two_pot (t3_G' G x y v u) S
+  have hU := t2_cross_union G S' {v, x} hdisj
+  have hC := t2_cross_map (G.comap (Function.Embedding.subtype (· ∈ t3_R x y v))) G
+    (Function.Embedding.subtype _) (Function.Embedding.subtype _) (fun _ _ => Iff.rfl) S S
+  rw [← hS'] at hC
+  set N := ∑ a ∈ S, if G.Adj (a : V) v then 1 else 0 with hN
+  have h1 : 2 ≤ t2_cross G {v, x} {v, x} := by
+    simp [t2_cross, sum_pair hvx, hxv, hxv.symm]
+  have h2 : N + 1 ≤ t2_cross G S' {v, x} := by
+    have : t2_cross G S' {v, x} = N + ∑ a ∈ S, if G.Adj (a : V) x then 1 else 0 := by
+      simp only [t2_cross, sum_pair hvx, hS', sum_map, sum_add_distrib, hN]
+      rfl
+    rw [this]
+    have : 1 ≤ ∑ a ∈ S, if G.Adj (a : V) x then 1 else 0 := by
+      refine le_trans ?_ (single_le_sum (f := fun a : t3_R x y v =>
+        if G.Adj (a : V) x then 1 else 0) (fun _ _ => Nat.zero_le _) hu0)
+      simp [hxu.symm]
+    omega
+  have hA : t2_cross (t3_G' G x y v u) S S ≤
+      t2_cross (G.comap (Function.Embedding.subtype (· ∈ t3_R x y v))) S S +
+      (∑ a ∈ S, ∑ b ∈ S, if (a : V) = u ∧ G.Adj v b then 1 else 0) +
+      (∑ a ∈ S, ∑ b ∈ S, if (b : V) = u ∧ G.Adj a v then 1 else 0) := by
+    simp only [t2_cross, ← sum_add_distrib]
+    refine sum_le_sum fun a _ => sum_le_sum fun b _ => ?_
+    by_cases hab : (t3_G' G x y v u).Adj a b
+    · rw [ite_eq_left hab]
+      rw [t3_G', SimpleGraph.fromRel_adj] at hab
+      rcases hab with ⟨-, (h | h) | (h | h)⟩
+      · rw [ite_eq_left (show (G.comap (Function.Embedding.subtype (· ∈ t3_R x y v))).Adj a b
+          from h)]; omega
+      · rw [ite_eq_left h]; omega
+      · rw [ite_eq_left (show (G.comap (Function.Embedding.subtype (· ∈ t3_R x y v))).Adj a b
+          from h.symm)]; omega
+      · rw [ite_eq_left (show (b : V) = u ∧ G.Adj a v from ⟨h.1, h.2.symm⟩)]; omega
+    · rw [ite_eq_right hab]; omega
+  have hne : ∀ a : t3_R x y v, a ≠ ⟨u, huR⟩ → (a : V) ≠ u := fun a ha h => ha (Subtype.ext h)
+  have hB1 : (∑ a ∈ S, ∑ b ∈ S, if (a : V) = u ∧ G.Adj v b then 1 else 0) = N := by
+    rw [sum_eq_single_of_mem _ hu0]
+    · simp only [true_and, hN, G.adj_comm]
+    · intro a _ ha
+      exact sum_eq_zero fun b _ => ite_eq_right fun h => hne a ha h.1
+  have hB2 : (∑ a ∈ S, ∑ b ∈ S, if (b : V) = u ∧ G.Adj a v then 1 else 0) = N := by
+    rw [sum_comm, sum_eq_single_of_mem _ hu0]
+    · simp only [true_and, hN]
+    · intro b _ hb
+      exact sum_eq_zero fun a _ => ite_eq_right fun h => hne b hb h.1
+  rw [hcard] at hpT
+  push_cast at hpT hpS
+  omega
 
 /-- **Claim 13.** If `xy` is an edge with `d(x) = d(y) = 3`, then `x` lies in a triangle. -/
 theorem MinCounter.claim13 (hG : MinCounter G) {x y : V} (hxy : G.Adj x y)
     (hx : G.degree x = 3) (hy : G.degree y = 3) :
     ∃ a b, G.Adj x a ∧ G.Adj x b ∧ G.Adj a b := by
-  sorry
+  by_contra hno
+  push Not at hno
+  obtain ⟨u, v, huv, huy, hvy, hxu, hxv, hNx⟩ := t3_nbr2 hx hxy
+  obtain ⟨p, q, -, -, -, -, -, hNy⟩ := t3_nbr2 hy hxy.symm
+  have hnuv : ¬ G.Adj u v := hno u v hxu hxv
+  have hux : u ≠ x := (G.ne_of_adj hxu).symm
+  have hvx : v ≠ x := (G.ne_of_adj hxv).symm
+  have huR : u ∈ t3_R x y v := t3_mem.2 ⟨hux, huy, huv⟩
+  by_cases hcol : (t3_G' G x y v u).Colorable 3
+  · exact hG.crit.not_colorable (t3_extend hxu huv huy hnuv hNx hNy hcol)
+  have hcard : Fintype.card (t3_R x y v) < Fintype.card V := by
+    rw [Fintype.card_coe, ← card_univ]
+    exact card_lt_card (ssubset_univ_iff.2 fun h => (t3_mem.1 (by rw [h]; exact mem_univ x)).1 rfl)
+  obtain ⟨S, hSne, hSpot, hSnc⟩ := hG.small _ _ hcard hcol
+  by_cases hu0 : (⟨u, huR⟩ : t3_R x y v) ∈ S
+  · obtain ⟨T, hyT, hcT, hp⟩ := t3_pot hxu hxv hvx hvy (G.ne_of_adj hxy) huR S hu0
+    have hS2 : 2 ≤ S.card := by
+      by_contra h
+      obtain ⟨a, rfl⟩ := card_eq_one.1 (show S.card = 1 by have := card_pos.2 hSne; omega)
+      have h2 := t2_two_pot (t3_G' G x y v u) {a}
+      have : t2_cross (t3_G' G x y v u) {a} {a} = 0 := by simp [t2_cross]
+      rw [this, card_singleton] at h2
+      omega
+    have hT : T ≠ univ := fun h => hyT (by rw [h]; exact mem_univ y)
+    have := hG.claim10 _ hT (by omega) (by omega)
+    omega
+  · apply hSnc
+    obtain ⟨c⟩ := hG.crit.vertex x
+    refine ⟨SimpleGraph.Coloring.mk (fun s => c ⟨s.1.1, (t3_mem.1 s.1.2).1⟩) ?_⟩
+    intro s t hst
+    apply c.valid
+    show G.Adj s.1.1 t.1.1
+    have hst' : (t3_G' G x y v u).Adj s.1 t.1 := hst
+    rw [t3_G', SimpleGraph.fromRel_adj] at hst'
+    have hsu : (s.1 : V) ≠ u := fun h => hu0 (by
+      have : s.1 = ⟨u, huR⟩ := Subtype.ext h
+      rw [← this]; exact s.2)
+    have htu : (t.1 : V) ≠ u := fun h => hu0 (by
+      have : t.1 = ⟨u, huR⟩ := Subtype.ext h
+      rw [← this]; exact t.2)
+    rcases hst' with ⟨-, (h | h) | (h | h)⟩
+    · exact h
+    · exact absurd h.1 hsu
+    · exact h.symm
+    · exact absurd h.1 htu
 
 /-- (5): every vertex of degree 3 has at most one neighbour of degree 3. -/
 theorem MinCounter.deg3_nbrs (hG : MinCounter G) (x : V) (hx : G.degree x = 3) :
