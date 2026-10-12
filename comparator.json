@@ -1,0 +1,14 @@
+{
+  "challenge_module": "Challenge",
+  "solution_module": "Solution",
+  "theorem_names": [
+    "GrotzschKY.grotzsch",
+    "GrotzschKY.ore_four",
+    "GrotzschKY.isPlanar_K4",
+    "GrotzschKY.not_isPlanar_K5",
+    "GrotzschKY.not_isPlanar_K33"
+  ],
+  "definition_names": [],
+  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"],
+  "enable_nanoda": true
+}

@@ -11,8 +11,7 @@ public import LeanPool.K5MinorFreeChoosability.Planar.FaceApex
 public import LeanPool.K5MinorFreeChoosability.Planar.MinorClosed
 public import LeanPool.K5MinorFreeChoosability.Planar.Examples
 public import LeanPool.K5MinorFreeChoosability.Frontier.PlanarDensity
-public import LeanPool.K5MinorFreeChoosability.Frontier.ApexTools
-public import LeanPool.K5MinorFreeChoosability.Wagner.WagnerA
+public import LeanPool.K5MinorFreeChoosability.Reach
 
 /-!
 # Grötzsch's theorem
@@ -44,6 +43,19 @@ open Classical Finset Equiv Equiv.Perm LeanPool.K5MinorFreeChoosability
 namespace Grotzsch
 
 variable {V : Type} [Fintype V] {G : SimpleGraph V}
+
+/-- Planarity is inherited along injective adjacency-preserving maps (subgraphs). -/
+theorem isPlanar_of_injective_hom' {W : Type} [Fintype W] {Y : SimpleGraph W} {X : SimpleGraph V}
+    (f : V → W) (hf : Function.Injective f) (hadj : ∀ a b, X.Adj a b → Y.Adj (f a) (f b))
+    (hY : IsPlanar Y) : IsPlanar X :=
+  isPlanar_of_minorModel hY
+    { branch := fun v => {f v}
+      branch_nonempty := fun v => Finset.singleton_nonempty _
+      branch_connected := fun v => by
+        rw [← connSet_iff_induce_connected]; simpa using connSet_singleton Y (f v)
+      branch_disjoint := fun v w hvw => by
+        simpa using fun h => hvw (hf h)
+      branch_adjacent := fun a b hab => ⟨f a, by simp, f b, by simp, hadj a b hab⟩ }
 
 /-- The number of edges, independently of the `Fintype` instance on the edge set. -/
 theorem card_edgeFinset_eq_natCard (G : SimpleGraph V) [Fintype G.edgeSet] :
@@ -438,7 +450,7 @@ theorem grotzsch_aux : ∀ (n : ℕ) (V : Type) [Fintype V] (G : SimpleGraph V),
           | _ a b => simpa using he
         · exact Subtype.ext (Sym2.map.injective Subtype.val_injective (congrArg Subtype.val h))
       exact ih _ (by omega) _ (G.induce {w | w ≠ v}) rfl
-        (isPlanar_of_injective_hom Subtype.val Subtype.val_injective (fun a b h => h) hP)
+        (isPlanar_of_injective_hom' Subtype.val Subtype.val_injective (fun a b h => h) hP)
         (h3.comap (SimpleGraph.Embedding.induce _).isContained)
     · have hlt : Nat.card (G.deleteEdges {e}).edgeSet < Nat.card G.edgeSet := by
         rw [Nat.card_coe_set_eq, Nat.card_coe_set_eq]
@@ -447,7 +459,8 @@ theorem grotzsch_aux : ∀ (n : ℕ) (V : Type) [Fintype V] (G : SimpleGraph V),
           (SimpleGraph.edgeSet_mono (G.deleteEdges_le _)) fun h => ?_
         have : e ∈ (G.deleteEdges {e}).edgeSet := by rw [h]; exact he
         simp at this
-      exact ih _ (by omega) V (G.deleteEdges {e}) rfl (hP.mono (G.deleteEdges_le _))
+      exact ih _ (by omega) V (G.deleteEdges {e}) rfl (isPlanar_of_injective_hom' id Function.injective_id
+          (fun a b h => (G.deleteEdges_le _) h) hP)
         (h3.anti (G.deleteEdges_le _))
   have hore := five_mul_card_le G hcrit
   rw [card_edgeFinset_eq_natCard] at hore
