@@ -212,15 +212,448 @@ section Claims
 
 variable {V : Type} [Fintype V] {G : SimpleGraph V}
 
+/-- Ordered count of adjacent pairs `(a, b)` with `a ∈ S`, `b ∈ R`. -/
+private def t2_cross {α : Type*} (G : SimpleGraph α) (S R : Finset α) : ℕ :=
+  ∑ a ∈ S, ∑ b ∈ R, if G.Adj a b then 1 else 0
+
+private lemma t2_two_eIn {W : Type*} [Fintype W] (G : SimpleGraph W) (R : Finset W) :
+    2 * eIn G R = t2_cross G R R := by
+  have h1 : t2_cross G R R = #((R ×ˢ R).filter fun p => G.Adj p.1 p.2) := by
+    rw [card_filter, sum_product]; rfl
+  rw [h1, card_eq_sum_card_fiberwise (f := fun p => s(p.1, p.2))
+    (t := G.edgeFinset.filter fun e => ∀ v ∈ e, v ∈ R)]
+  · rw [eIn, mul_comm, ← smul_eq_mul, ← sum_const]
+    refine sum_congr rfl fun e he => ?_
+    induction e using Sym2.ind with
+    | _ a b =>
+    simp only [mem_filter, SimpleGraph.mem_edgeFinset, SimpleGraph.mem_edgeSet, Sym2.mem_iff,
+      forall_eq_or_imp, forall_eq] at he
+    obtain ⟨he, ha, hb⟩ := he
+    have : ({x ∈ (R ×ˢ R).filter (fun p => G.Adj p.1 p.2) | s(x.1, x.2) = s(a, b)}) =
+        {(a, b), (b, a)} := by
+      ext ⟨x, y⟩
+      simp only [mem_filter, mem_product, Sym2.eq_iff, mem_insert, mem_singleton,
+        Prod.mk.injEq]
+      constructor
+      · rintro ⟨-, h⟩; exact h
+      · rintro (⟨rfl, rfl⟩ | ⟨rfl, rfl⟩)
+        · exact ⟨⟨⟨ha, hb⟩, he⟩, Or.inl ⟨rfl, rfl⟩⟩
+        · exact ⟨⟨⟨hb, ha⟩, he.symm⟩, Or.inr ⟨rfl, rfl⟩⟩
+    rw [this, card_pair]
+    intro h
+    simp only [Prod.mk.injEq] at h
+    exact G.ne_of_adj he h.1
+  · intro p hp
+    simp only [coe_filter, mem_product] at hp
+    simp only [coe_filter, SimpleGraph.mem_edgeFinset]
+    refine ⟨hp.2, fun v hv => ?_⟩
+    rcases Sym2.mem_iff.1 hv with rfl | rfl
+    exacts [hp.1.1, hp.1.2]
+
+private lemma t2_two_pot {W : Type*} [Fintype W] (G : SimpleGraph W) (R : Finset W) :
+    2 * pot G R = 10 * (R.card : ℤ) - 3 * (t2_cross G R R : ℤ) := by
+  rw [pot, ← t2_two_eIn]; push_cast; linarith
+
+private lemma t2_cross_union {α : Type*} [DecidableEq α] (G : SimpleGraph α) (S R : Finset α)
+    (h : Disjoint S R) :
+    t2_cross G (S ∪ R) (S ∪ R) = t2_cross G S S + t2_cross G R R + 2 * t2_cross G S R := by
+  have hc : t2_cross G R S = t2_cross G S R := by
+    unfold t2_cross; rw [sum_comm]
+    exact sum_congr rfl fun a _ => sum_congr rfl fun b _ => by
+      simp only [G.adj_comm]
+  unfold t2_cross at *
+  simp only [sum_union h]
+  rw [sum_add_distrib, sum_add_distrib, hc]; omega
+
+private lemma t2_cross_map {α β : Type*} (H : SimpleGraph α) (G : SimpleGraph β) (f g : α ↪ β)
+    (hf : ∀ a b, H.Adj a b ↔ G.Adj (f a) (g b)) (S R : Finset α) :
+    t2_cross H S R = t2_cross G (S.map f) (R.map g) := by
+  unfold t2_cross
+  simp only [sum_map, hf]
+
+private lemma t2_cross_top {α : Type*} (S : Finset α) :
+    t2_cross (⊤ : SimpleGraph α) S S = S.card * (S.card - 1) := by
+  unfold t2_cross
+  refine sum_const_nat fun a ha => ?_
+  simp only [SimpleGraph.top_adj, ← card_filter]
+  rw [filter_ne, card_erase_of_mem ha]
+
+private lemma t2_cross_le_top {α : Type*} (G : SimpleGraph α) (S : Finset α) :
+    t2_cross G S S ≤ S.card * (S.card - 1) := by
+  rw [← t2_cross_top]
+  exact sum_le_sum fun a _ => sum_le_sum fun b _ => by
+    by_cases h : G.Adj a b
+    · simp [h, G.ne_of_adj h]
+    · simp [h]
+
+/-- Sets of size `2` and `3` have potential at least `7` and `6`. -/
+private lemma t2_pot_small {W : Type*} [Fintype W] (G : SimpleGraph W) (R : Finset W) :
+    (R.card = 2 → 7 ≤ pot G R) ∧ (R.card = 3 → 6 ≤ pot G R) := by
+  have h := t2_two_pot G R
+  have h' := t2_cross_le_top G R
+  constructor
+  · intro h2; rw [h2] at h h'; norm_num at h'; omega
+  · intro h3; rw [h3] at h h'; norm_num at h'; omega
+
+/-- The graph `Y(G, R, φ)` of Definition 7. -/
+private def t2_Y (G : SimpleGraph V) (R : Finset V) (phi : V → Fin 3) :
+    SimpleGraph ({v // v ∉ R} ⊕ Fin 3) where
+  Adj x y := match x, y with
+    | .inl a, .inl b => G.Adj a b
+    | .inr i, .inr j => i ≠ j
+    | .inl a, .inr i => ∃ w ∈ R, G.Adj a w ∧ phi w = i
+    | .inr i, .inl a => ∃ w ∈ R, G.Adj a w ∧ phi w = i
+  symm := ⟨fun x y h => by
+    cases x <;> cases y <;> simp_all [G.adj_comm, eq_comm]⟩
+  loopless := ⟨fun x h => by
+    cases x <;> simp_all⟩
+
+omit [Fintype V] in
+/-- **Claim 8.** `Y(G, R, φ)` is not 3-colourable. -/
+private lemma t2_Y_not_colorable (hc : ¬ G.Colorable 3) (R : Finset V) (phi : V → Fin 3)
+    (hphi : ∀ u ∈ R, ∀ v ∈ R, G.Adj u v → phi u ≠ phi v) : ¬ (t2_Y G R phi).Colorable 3 := by
+  rintro ⟨c⟩
+  have hσ : Function.Injective fun i => c (.inr i) := by
+    intro i j h
+    by_contra hij
+    exact c.valid (show (t2_Y G R phi).Adj (.inr i) (.inr j) from hij) h
+  apply hc
+  refine ⟨SimpleGraph.Coloring.mk
+    (fun v => if h : v ∈ R then c (.inr (phi v)) else c (.inl ⟨v, h⟩)) ?_⟩
+  intro u v huv
+  by_cases hu : u ∈ R <;> by_cases hv : v ∈ R <;> simp only [hu, hv, ↓reduceDIte]
+  · exact fun h => hphi u hu v hv huv (hσ h)
+  · exact fun h => c.valid (show (t2_Y G R phi).Adj (.inr (phi u)) (.inl ⟨v, hv⟩) from
+      ⟨u, hu, huv.symm, rfl⟩) h
+  · exact fun h => c.valid (show (t2_Y G R phi).Adj (.inl ⟨u, hu⟩) (.inr (phi v)) from
+      ⟨v, hv, huv, rfl⟩) h
+  · exact c.valid (show (t2_Y G R phi).Adj (.inl ⟨u, hu⟩) (.inl ⟨v, hv⟩) from huv)
+
+/-- The core potential computation of Claims 9 and 10. -/
+private lemma t2_core (hG : MinCounter G) (R : Finset V) (hR : R ≠ univ) (h4 : 4 ≤ R.card)
+    (phi : V → Fin 3) (hphi : ∀ u ∈ R, ∀ v ∈ R, G.Adj u v → phi u ≠ phi v) :
+    ∃ (A : Finset V) (B : Finset (Fin 3)), Disjoint A R ∧ B.Nonempty ∧
+      pot G (A ∪ R) + 3 * ((∑ a ∈ A, ∑ w ∈ R,
+        if G.Adj a w ∧ phi w ∉ B then 1 else 0 : ℕ) : ℤ) + 5 ≤ 2 + pot G R ∧
+      (2 ≤ B.card → pot G (A ∪ R) + 6 ≤ 2 + pot G R) := by
+  obtain ⟨z0, hz0⟩ : ∃ z, z ∉ R := by
+    by_contra h; push Not at h; exact hR (eq_univ_of_forall h)
+  obtain ⟨r0, hr0⟩ : R.Nonempty := card_pos.1 (by omega)
+  set Y := t2_Y G R phi with hY
+  have hcard : Fintype.card ({v // v ∉ R} ⊕ Fin 3) < Fintype.card V := by
+    have := card_le_univ R
+    simp only [Fintype.card_sum, Fintype.card_fin]
+    rw [Fintype.card_subtype_compl, Fintype.card_coe]
+    omega
+  obtain ⟨S, hSne, hSpot, hScol⟩ :=
+    hG.small _ Y hcard (t2_Y_not_colorable hG.crit.not_colorable R phi hphi)
+  set A0 : Finset {v // v ∉ R} := S.preimage Sum.inl Sum.inl_injective.injOn
+  set B : Finset (Fin 3) := S.preimage Sum.inr Sum.inr_injective.injOn
+  let eL : {v // v ∉ R} ↪ ({v // v ∉ R} ⊕ Fin 3) := ⟨Sum.inl, Sum.inl_injective⟩
+  let eR : Fin 3 ↪ ({v // v ∉ R} ⊕ Fin 3) := ⟨Sum.inr, Sum.inr_injective⟩
+  let eV : {v // v ∉ R} ↪ V := Function.Embedding.subtype _
+  have hS : S = A0.map eL ∪ B.map eR := by
+    ext x; cases x <;> simp [A0, B, eL, eR]
+  have hdisjS : Disjoint (A0.map eL) (B.map eR) := by
+    rw [disjoint_left]
+    intro x hx hx'
+    simp only [mem_map] at hx hx'
+    obtain ⟨a, _, rfl⟩ := hx
+    obtain ⟨i, _, h⟩ := hx'
+    cases h
+  set A := A0.map eV with hA
+  have hdisj : Disjoint A R := by
+    rw [disjoint_left]
+    intro x hx
+    simp only [hA, mem_map] at hx
+    obtain ⟨a, _, rfl⟩ := hx
+    exact a.2
+  have hBne : B.Nonempty := by
+    rw [nonempty_iff_ne_empty]
+    intro hB
+    apply hScol
+    obtain ⟨c⟩ := hG.crit.vertex r0
+    let f : ({v // v ∉ R} ⊕ Fin 3) → V := Sum.elim Subtype.val (fun _ => z0)
+    have hf : ∀ x, f x ≠ r0 := by
+      intro x
+      cases x with
+      | inl a => exact show a.1 ≠ r0 from fun h => a.2 (h ▸ hr0)
+      | inr i => exact show z0 ≠ r0 from fun h => hz0 (h ▸ hr0)
+    refine ⟨SimpleGraph.Coloring.mk (fun x => c ⟨f x.1, hf x.1⟩) ?_⟩
+    rintro ⟨x, hx⟩ ⟨y, hy⟩ hxy
+    rw [mem_coe, hS, hB, map_empty, union_empty, mem_map] at hx hy
+    obtain ⟨a, -, rfl⟩ := hx
+    obtain ⟨b, -, rfl⟩ := hy
+    exact c.valid (show G.Adj a b from hxy)
+  set cY := t2_cross Y (A0.map eL) (B.map eR)
+  set cin := ∑ a ∈ A, ∑ w ∈ R, if G.Adj a w ∧ phi w ∈ B then 1 else 0
+  set cout := ∑ a ∈ A, ∑ w ∈ R, if G.Adj a w ∧ phi w ∉ B then 1 else 0
+  have h1 : S.card = A0.card + B.card := by
+    rw [hS, card_union_of_disjoint hdisjS, card_map, card_map]
+  have h2 : t2_cross Y S S = t2_cross Y (A0.map eL) (A0.map eL) +
+      t2_cross Y (B.map eR) (B.map eR) + 2 * cY := by
+    rw [hS]; exact t2_cross_union _ _ _ hdisjS
+  have h3 : t2_cross Y (A0.map eL) (A0.map eL) = t2_cross G A A := by
+    rw [← t2_cross_map (G.comap eV) Y eL eL (fun a b => Iff.rfl),
+      t2_cross_map (G.comap eV) G eV eV (fun a b => Iff.rfl)]
+  have h4' : t2_cross Y (B.map eR) (B.map eR) = B.card * (B.card - 1) := by
+    rw [← t2_cross_map ⊤ Y eR eR (fun a b => Iff.rfl), t2_cross_top]
+  have h5 : cY ≤ cin := by
+    simp only [cY, cin, t2_cross, hA, sum_map]
+    refine sum_le_sum fun a _ => ?_
+    calc (∑ i ∈ B, if Y.Adj (eL a) (eR i) then 1 else 0)
+        ≤ ∑ i ∈ B, ∑ w ∈ R, if G.Adj (eV a) w ∧ phi w = i then 1 else 0 := by
+          refine sum_le_sum fun i _ => ?_
+          split_ifs with h
+          · obtain ⟨w, hw, hadj, rfl⟩ := h
+            refine le_trans ?_ (single_le_sum (f := fun x => if G.Adj (eV a) x ∧ phi x = phi w
+              then 1 else 0) (fun _ _ => Nat.zero_le _) hw)
+            rw [ite_eq_left (show G.Adj (eV a) w ∧ phi w = phi w from ⟨hadj, rfl⟩)]
+          · exact Nat.zero_le _
+      _ = ∑ w ∈ R, ∑ i ∈ B, if G.Adj (eV a) w ∧ phi w = i then 1 else 0 := sum_comm
+      _ = _ := sum_congr rfl fun w _ => by
+          by_cases hadj : G.Adj (eV a) w <;> simp [hadj, sum_ite_eq]
+  have hsplit : t2_cross G A R = cin + cout := by
+    simp only [cin, cout, t2_cross]
+    rw [← sum_add_distrib]
+    refine sum_congr rfl fun a _ => ?_
+    rw [← sum_add_distrib]
+    refine sum_congr rfl fun w _ => ?_
+    by_cases ha : G.Adj a w <;> by_cases hb : phi w ∈ B <;> simp [ha, hb]
+  have hT := t2_two_pot G (A ∪ R)
+  rw [card_union_of_disjoint hdisj, t2_cross_union _ _ _ hdisj, hsplit] at hT
+  have hRp := t2_two_pot G R
+  have hYp := t2_two_pot Y S
+  rw [h1, h2, h3, h4'] at hYp
+  have hAc : A.card = A0.card := card_map _
+  have hBle : B.card ≤ 3 := (card_le_univ B).trans (by simp)
+  have hB1 : 1 ≤ B.card := card_pos.2 hBne
+  refine ⟨A, B, hdisj, hBne, ?_, ?_⟩
+  · have : 10 * (B.card : ℤ) - 3 * ((B.card * (B.card - 1) : ℕ) : ℤ) ≥ 10 := by
+      rcases (by omega : B.card = 1 ∨ B.card = 2 ∨ B.card = 3) with h | h | h <;>
+        rw [h] <;> norm_num
+    push_cast at hT hYp this ⊢
+    omega
+  · intro hB2
+    have : 10 * (B.card : ℤ) - 3 * ((B.card * (B.card - 1) : ℕ) : ℤ) ≥ 12 := by
+      rcases (by omega : B.card = 2 ∨ B.card = 3) with h | h <;>
+        rw [h] <;> norm_num
+    push_cast at hT hYp this ⊢
+    omega
+
 /-- **Claim 9.** Every proper subset `R` with `|R| ≥ 2` has potential at least `6`. -/
 theorem MinCounter.claim9 (hG : MinCounter G) (R : Finset V) (hR : R ≠ univ)
     (h2 : 2 ≤ R.card) : 6 ≤ pot G R := by
-  sorry
+  by_contra hlt
+  push Not at hlt
+  set P := (univ : Finset (Finset V)).filter fun S => S ≠ univ ∧ 2 ≤ S.card with hP
+  have hRP : R ∈ P := mem_filter.2 ⟨mem_univ _, hR, h2⟩
+  obtain ⟨R0, hR0P, hmin⟩ := exists_min_image P (pot G) ⟨R, hRP⟩
+  obtain ⟨-, hR0, h20⟩ := mem_filter.1 hR0P
+  have hle : pot G R0 ≤ 5 := (hmin R hRP).trans (by omega)
+  have h40 : 4 ≤ R0.card := by
+    have hs := t2_pot_small G R0
+    by_contra h
+    push Not at h
+    rcases (by omega : R0.card = 2 ∨ R0.card = 3) with h' | h'
+    · have := hs.1 h'; omega
+    · have := hs.2 h'; omega
+  obtain ⟨v0, hv0⟩ : ∃ v, v ∉ R0 := by
+    by_contra h; push Not at h; exact hR0 (eq_univ_of_forall h)
+  obtain ⟨c⟩ := hG.crit.vertex v0
+  let phi : V → Fin 3 := fun v => if h : v ≠ v0 then c ⟨v, h⟩ else 0
+  have hphi : ∀ u ∈ R0, ∀ v ∈ R0, G.Adj u v → phi u ≠ phi v := by
+    intro u hu v hv huv
+    have hu' : u ≠ v0 := fun h => hv0 (h ▸ hu)
+    have hv' : v ≠ v0 := fun h => hv0 (h ▸ hv)
+    simp only [phi, hu', hv', ne_eq, not_false_eq_true, ↓reduceDIte]
+    exact c.valid (show G.Adj u v from huv)
+  obtain ⟨A, B, -, -, hpot, -⟩ := t2_core hG R0 hR0 h40 phi hphi
+  by_cases hT : A ∪ R0 = univ
+  · have := hG.big
+    rw [hT] at hpot
+    omega
+  · have := hmin (A ∪ R0)
+      (mem_filter.2 ⟨mem_univ _, hT, le_trans h20 (card_le_card subset_union_right)⟩)
+    omega
+
+/-- If at most one vertex `u1` of `R` has neighbours outside `R`, then `G` is 3-colourable. -/
+private lemma t2_colorable_of_cut (hc : IsCritical4 G) (R : Finset V) (hR : R ≠ univ)
+    (u1 r : V) (hu1 : u1 ∈ R) (hr : r ∈ R) (hru : r ≠ u1)
+    (hcut : ∀ u ∈ R, ∀ z ∉ R, G.Adj u z → u = u1) : G.Colorable 3 := by
+  obtain ⟨v0, hv0⟩ : ∃ v, v ∉ R := by
+    by_contra h; push Not at h; exact hR (eq_univ_of_forall h)
+  obtain ⟨c1⟩ := hc.vertex v0
+  obtain ⟨c2⟩ := hc.vertex r
+  let phi : V → Fin 3 := fun v => if h : v ≠ v0 then c1 ⟨v, h⟩ else 0
+  let psi : V → Fin 3 := fun v => if h : v ≠ r then c2 ⟨v, h⟩ else 0
+  have key1 : ∀ u ∈ R, ∀ v ∈ R, G.Adj u v → phi u ≠ phi v := by
+    intro u hu v hv huv
+    have hu' : u ≠ v0 := fun h => hv0 (h ▸ hu)
+    have hv' : v ≠ v0 := fun h => hv0 (h ▸ hv)
+    simp only [phi, hu', hv', ne_eq, not_false_eq_true, ↓reduceDIte]
+    exact c1.valid (show G.Adj u v from huv)
+  have key2 : ∀ u v, u ≠ r → v ≠ r → G.Adj u v → psi u ≠ psi v := by
+    intro u v hu' hv' huv
+    simp only [psi, hu', hv', ne_eq, not_false_eq_true, ↓reduceDIte]
+    exact c2.valid (show G.Adj u v from huv)
+  let σ := Equiv.swap (psi u1) (phi u1)
+  have hσ : σ (psi u1) = phi u1 := Equiv.swap_apply_left _ _
+  have hu1r : u1 ≠ r := Ne.symm hru
+  refine ⟨SimpleGraph.Coloring.mk (fun v => if v ∈ R then phi v else σ (psi v)) ?_⟩
+  intro u v huv
+  by_cases hu : u ∈ R <;> by_cases hv : v ∈ R <;> simp only [hu, hv, ↓reduceIte]
+  · exact key1 u hu v hv huv
+  · obtain rfl := hcut u hu v hv huv
+    rw [← hσ]
+    exact fun h => key2 u v hu1r (fun h' => hv (h' ▸ hr)) huv (σ.injective h)
+  · obtain rfl := hcut v hv u hu huv.symm
+    rw [← hσ]
+    exact fun h => key2 u v (fun h' => hu (h' ▸ hr)) hu1r huv (σ.injective h)
+  · exact fun h => key2 u v (fun h' => hu (h' ▸ hr)) (fun h' => hv (h' ▸ hr)) huv
+      (σ.injective h)
+
+/-- `G` is 2-connected in the sense needed for Claim 10: a proper subset with at least two
+vertices has two distinct vertices with neighbours outside it. -/
+private lemma t2_boundary (hc : IsCritical4 G) (R : Finset V) (hR : R ≠ univ)
+    (h2 : 2 ≤ R.card) :
+    ∃ u1 ∈ R, ∃ u2 ∈ R, u1 ≠ u2 ∧ (∃ z ∉ R, G.Adj u1 z) ∧ (∃ z ∉ R, G.Adj u2 z) := by
+  by_cases hb : ∃ u ∈ R, ∃ z ∉ R, G.Adj u z
+  · obtain ⟨u1, hu1, z1, hz1, h1⟩ := hb
+    obtain ⟨r, hr, hru⟩ := exists_mem_ne (by omega : 1 < R.card) u1
+    by_contra hno
+    apply hc.not_colorable
+    refine t2_colorable_of_cut hc R hR u1 r hu1 hr hru ?_
+    intro u hu z hz huz
+    by_contra hne
+    exact hno ⟨u, hu, u1, hu1, hne, ⟨z, hz, huz⟩, ⟨z1, hz1, h1⟩⟩
+  · exfalso
+    obtain ⟨u1, hu1⟩ : R.Nonempty := card_pos.1 (by omega)
+    obtain ⟨r, hr, hru⟩ := exists_mem_ne (by omega : 1 < R.card) u1
+    apply hc.not_colorable
+    refine t2_colorable_of_cut hc R hR u1 r hu1 hr hru ?_
+    intro u hu z hz huz
+    exact absurd ⟨u, hu, z, hz, huz⟩ hb
+
+/-- A 3-colouring of `G[R] + u1u2` (exists by hypothesis (3) and Claim 9). -/
+private lemma t2_color_plus_edge (hG : MinCounter G) (R : Finset V) (hR : R ≠ univ)
+    (u1 u2 : V) (hu1 : u1 ∈ R) (hu2 : u2 ∈ R) (hne : u1 ≠ u2) :
+    ∃ phi : V → Fin 3, (∀ u ∈ R, ∀ v ∈ R, G.Adj u v → phi u ≠ phi v) ∧ phi u1 ≠ phi u2 := by
+  let a1 : R := ⟨u1, hu1⟩
+  let a2 : R := ⟨u2, hu2⟩
+  let eV : R ↪ V := Function.Embedding.subtype _
+  let H : SimpleGraph R := SimpleGraph.fromRel fun a b => G.Adj a b ∨ (a = a1 ∧ b = a2)
+  have hHadj : ∀ a b, H.Adj a b ↔
+      a ≠ b ∧ ((G.Adj a b ∨ (a = a1 ∧ b = a2)) ∨ (G.Adj b a ∨ (b = a1 ∧ a = a2))) :=
+    fun a b => SimpleGraph.fromRel_adj _ _ _
+  have hcardR : Fintype.card R < Fintype.card V := by
+    rw [Fintype.card_coe, ← card_univ]
+    exact card_lt_card (ssubset_univ_iff.2 hR)
+  have hcol : H.Colorable 3 := by
+    refine hG.small.smallColorable R H hcardR fun U hU => ?_
+    have hp := t2_two_pot H U
+    rcases (by have := card_pos.2 hU; omega : U.card = 1 ∨ 2 ≤ U.card) with h1 | h2'
+    · obtain ⟨a, rfl⟩ := card_eq_one.1 h1
+      have : t2_cross H {a} {a} = 0 := by simp [t2_cross]
+      rw [this, h1] at hp
+      omega
+    · have hU' : U.map eV ≠ univ := by
+        intro h
+        apply hR
+        refine eq_univ_of_forall fun v => ?_
+        have : v ∈ U.map eV := h ▸ mem_univ v
+        obtain ⟨b, -, rfl⟩ := mem_map.1 this
+        exact b.2
+      have h9 := hG.claim9 (U.map eV) hU' (by rw [card_map]; exact h2')
+      have hpG := t2_two_pot G (U.map eV)
+      rw [card_map, ← t2_cross_map (G.comap eV) G eV eV (fun _ _ => Iff.rfl)] at hpG
+      have hpair : ∀ x y : R, (∑ a ∈ U, ∑ b ∈ U, if a = x ∧ b = y then 1 else 0) ≤ 1 := by
+        intro x y
+        calc (∑ a ∈ U, ∑ b ∈ U, if a = x ∧ b = y then 1 else 0)
+            ≤ ∑ a ∈ U, if a = x then 1 else 0 := sum_le_sum fun a _ => by
+              by_cases ha : a = x
+              · simp only [ha, true_and, ↓reduceIte]
+                rw [sum_ite_eq']
+                split_ifs <;> omega
+              · simp [ha]
+          _ ≤ 1 := by
+              rw [sum_ite_eq']
+              split_ifs <;> omega
+      have hle : t2_cross H U U ≤ t2_cross (G.comap eV) U U +
+          (∑ a ∈ U, ∑ b ∈ U, if a = a1 ∧ b = a2 then 1 else 0) +
+          (∑ a ∈ U, ∑ b ∈ U, if a = a2 ∧ b = a1 then 1 else 0) := by
+        simp only [t2_cross, ← sum_add_distrib]
+        refine sum_le_sum fun a _ => sum_le_sum fun b _ => ?_
+        by_cases hab : H.Adj a b
+        · rw [ite_eq_left hab]
+          rw [hHadj] at hab
+          rcases hab with ⟨-, (h | h) | (h | h)⟩
+          · rw [ite_eq_left (show (G.comap eV).Adj a b from h)]; omega
+          · rw [ite_eq_left h]; omega
+          · rw [ite_eq_left (show (G.comap eV).Adj a b from h.symm)]; omega
+          · rw [ite_eq_left (show a = a2 ∧ b = a1 from ⟨h.2, h.1⟩)]; omega
+        · rw [ite_eq_right hab]; omega
+      have := hpair a1 a2
+      have := hpair a2 a1
+      omega
+  obtain ⟨c⟩ := hcol
+  refine ⟨fun v => if h : v ∈ R then c ⟨v, h⟩ else 0, ?_, ?_⟩
+  · intro u hu v hv huv
+    simp only [hu, hv, ↓reduceDIte]
+    exact c.valid ((hHadj _ _).2
+      ⟨fun h => G.ne_of_adj huv (congrArg Subtype.val h), Or.inl (Or.inl huv)⟩)
+  · simp only [hu1, hu2, ↓reduceDIte]
+    exact c.valid ((hHadj a1 a2).2
+      ⟨fun h => hne (congrArg Subtype.val h), Or.inl (Or.inr ⟨rfl, rfl⟩)⟩)
 
 /-- **Claim 10.** A proper subset `R` with `|R| ≥ 2` and potential `≤ 6` spans a triangle. -/
 theorem MinCounter.claim10 (hG : MinCounter G) (R : Finset V) (hR : R ≠ univ)
     (h2 : 2 ≤ R.card) (h6 : pot G R ≤ 6) : R.card = 3 ∧ eIn G R = 3 := by
-  sorry
+  have h9 := hG.claim9 R hR h2
+  have h6' : pot G R = 6 := by omega
+  have hs := t2_pot_small G R
+  rcases (by omega : R.card = 2 ∨ R.card = 3 ∨ 4 ≤ R.card) with h | h | h
+  · have := hs.1 h; omega
+  · refine ⟨h, ?_⟩
+    unfold pot at h6'
+    rw [h] at h6'
+    omega
+  · exfalso
+    obtain ⟨u1, hu1, u2, hu2, hne, ⟨z1, hz1, hadj1⟩, ⟨z2, hz2, hadj2⟩⟩ :=
+      t2_boundary hG.crit R hR h2
+    obtain ⟨phi, hphi, hphi12⟩ := t2_color_plus_edge hG R hR u1 u2 hu1 hu2 hne
+    obtain ⟨A, B, -, hBne, hpot1, hpot2⟩ := t2_core hG R hR h phi hphi
+    have hbig := hG.big
+    rcases (by have := card_pos.2 hBne; omega : B.card = 1 ∨ 2 ≤ B.card) with hB | hB
+    · obtain ⟨i, rfl⟩ := card_eq_one.1 hB
+      by_cases hT : A ∪ R = univ
+      · obtain ⟨u, hu, z, hz, hzu, hui⟩ : ∃ u ∈ R, ∃ z ∉ R, G.Adj u z ∧ phi u ≠ i := by
+          by_cases h1 : phi u1 = i
+          · exact ⟨u2, hu2, z2, hz2, hadj2, fun h => hphi12 (h1.trans h.symm)⟩
+          · exact ⟨u1, hu1, z1, hz1, hadj1, h1⟩
+        have hzA : z ∈ A := by
+          have : z ∈ A ∪ R := hT ▸ mem_univ z
+          rcases mem_union.1 this with h' | h'
+          exacts [h', absurd h' hz]
+        have hext : 1 ≤ ∑ a ∈ A, ∑ w ∈ R,
+            if G.Adj a w ∧ phi w ∉ ({i} : Finset (Fin 3)) then 1 else 0 := by
+          refine le_trans ?_ (single_le_sum (f := fun a => ∑ w ∈ R,
+            if G.Adj a w ∧ phi w ∉ ({i} : Finset (Fin 3)) then 1 else 0)
+            (fun _ _ => Nat.zero_le _) hzA)
+          refine le_trans ?_ (single_le_sum (f := fun w =>
+            if G.Adj z w ∧ phi w ∉ ({i} : Finset (Fin 3)) then 1 else 0)
+            (fun _ _ => Nat.zero_le _) hu)
+          rw [ite_eq_left ⟨hzu.symm, by simpa using hui⟩]
+        rw [hT] at hpot1
+        omega
+      · have := hG.claim9 (A ∪ R) hT (le_trans h2 (card_le_card subset_union_right))
+        omega
+    · have := hpot2 hB
+      by_cases hT : A ∪ R = univ
+      · rw [hT] at this
+        omega
+      · have := hG.claim9 (A ∪ R) hT (le_trans h2 (card_le_card subset_union_right))
+        omega
 
 /-- **Claim 11.** `G` contains no `K₄ - e`: four vertices span at most four edges. -/
 theorem MinCounter.claim11 (hG : MinCounter G) (R : Finset V) (h4 : R.card = 4) :
