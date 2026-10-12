@@ -42,6 +42,9 @@ not.
 
 `G` is *4-critical* if it is not 3-colourable but deleting any vertex or any edge makes it
 3-colourable.
+
+The Mathlib definitions used in these statements are reproduced verbatim, with file and line at
+the pinned Mathlib revision, in `MATHLIB_DEFINITIONS.md` at the root of this repository.
 -/
 
 @[expose] public section

@@ -12,6 +12,8 @@ This repository formalizes, for finite simple graphs in Lean 4 with Mathlib:
 The audited statements are in [`Challenge.lean`](Challenge.lean), which imports only Mathlib and
 contains the definition of planarity; the proofs are in [`Solution.lean`](Solution.lean).
 [`comparator.json`](comparator.json) lists the compared theorems and
+[`MATHLIB_DEFINITIONS.md`](MATHLIB_DEFINITIONS.md) reproduces verbatim the Mathlib definitions
+used by the statements (at the pinned Mathlib revision), and
 [`formalization.yaml`](formalization.yaml) records provenance, sources and process.
 
 ## Planarity
