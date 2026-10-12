@@ -6,3 +6,4 @@ Authors: Juan Pablo Traverso Gianini
 module
 
 public import Grotzsch.Ore
+public import Grotzsch.Planar

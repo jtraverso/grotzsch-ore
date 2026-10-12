@@ -78,7 +78,101 @@ theorem exists_four_face (M : PlaneMap G) (h3 : G.CliqueFree 3) (hmin : ∀ v, 2
       (∀ e e' : FaceApex.F M d, e.1.fst = e'.1.fst → e = e') ∧
       x ∈ FaceApex.faceVerts M d ∧ y ∈ FaceApex.faceVerts M d ∧
       z ∈ FaceApex.faceVerts M d ∧ u ∈ FaceApex.faceVerts M d := by
-  sorry
+  have hσ := M.isRotationSystem
+  have hdeg : ∀ v, 2 ≤ Nat.card {u // G.Adj v u} := fun v => by
+    rw [show Nat.card {u // G.Adj v u} = Nat.card (G.neighborSet v) from rfl,
+      Nat.card_eq_fintype_card, G.card_neighborSet_eq_degree]
+    exact hmin v
+  have fst_eq : ∀ e, (M.facePerm e).fst = e.snd := fun e => facePerm_fst hσ e
+  have ne1 : ∀ e, M.facePerm e ≠ e := fun e => face_ne_self hσ e
+  have ne2 : ∀ e, M.facePerm (M.facePerm e) ≠ e := fun e => face_face_ne_self hσ hdeg e
+  have ne3 : ∀ e, M.facePerm (M.facePerm (M.facePerm e)) ≠ e :=
+    fun e => face_three_ne_self_of_cliqueFree hσ h3 e
+  -- the face permutation never sends a dart to its reverse
+  have nosymm : ∀ e : G.Dart, M.facePerm e ≠ e.symm := by
+    intro e he
+    rw [PlaneMap.facePerm_apply] at he
+    have h1 := card_neighbor_le_card_sameCycle hσ e.symm
+    have h2 : Nat.card {e' // SameCycle M.rot e.symm e'} ≤ 1 := by
+      rw [Nat.card_eq_fintype_card, Fintype.card_le_one_iff_subsingleton]
+      refine ⟨fun a b => Subtype.ext ?_⟩
+      exact (a.2.eq_of_left he).symm.trans (b.2.eq_of_left he)
+    have := hdeg e.symm.fst
+    omega
+  obtain ⟨d1, hd1⟩ : ∃ d1, d1 = M.facePerm d := ⟨_, rfl⟩
+  obtain ⟨d2, hd2⟩ : ∃ d2, d2 = M.facePerm d1 := ⟨_, rfl⟩
+  obtain ⟨d3, hd3⟩ : ∃ d3, d3 = M.facePerm d2 := ⟨_, rfl⟩
+  have m0 : SameCycle M.facePerm d d := SameCycle.refl _ _
+  have m1 : SameCycle M.facePerm d d1 := hd1 ▸ sameCycle_apply_right.mpr m0
+  have m2 : SameCycle M.facePerm d d2 := hd2 ▸ sameCycle_apply_right.mpr m1
+  have m3 : SameCycle M.facePerm d d3 := hd3 ▸ sameCycle_apply_right.mpr m2
+  have a1 : d1 ≠ d := hd1 ▸ ne1 d
+  have a2 : d2 ≠ d := by rw [hd2, hd1]; exact ne2 d
+  have a3 : d3 ≠ d := by rw [hd3, hd2, hd1]; exact ne3 d
+  have a4 : d2 ≠ d1 := hd2 ▸ ne1 d1
+  have a5 : d3 ≠ d1 := by rw [hd3, hd2]; exact ne2 d1
+  have a6 : d3 ≠ d2 := hd3 ▸ ne1 d2
+  -- the four darts form the whole face
+  set O := Finset.univ.filter fun e => SameCycle M.facePerm d e
+  have hO : O.card ≤ 4 := by
+    have := hd
+    rwa [Nat.card_eq_fintype_card, Fintype.card_subtype] at this
+  have hS : ({d, d1, d2, d3} : Finset G.Dart).card = 4 := by
+    rw [Finset.card_insert_of_notMem (by simp [a1.symm, a2.symm, a3.symm]),
+      Finset.card_insert_of_notMem (by simp [a4.symm, a5.symm]),
+      Finset.card_insert_of_notMem (by simp [a6.symm]), Finset.card_singleton]
+  have hSO : ({d, d1, d2, d3} : Finset G.Dart) ⊆ O := by
+    intro e he
+    simp only [Finset.mem_insert, Finset.mem_singleton] at he
+    rcases he with rfl | rfl | rfl | rfl <;> simp [O, *]
+  have hEq := Finset.eq_of_subset_of_card_le hSO (by omega)
+  have cover : ∀ e, SameCycle M.facePerm d e → e = d ∨ e = d1 ∨ e = d2 ∨ e = d3 := by
+    intro e he
+    have : e ∈ O := by simp [O, he]
+    rw [← hEq] at this
+    simpa using this
+  have h4 : M.facePerm d3 = d := by
+    rcases cover _ (sameCycle_apply_right.mpr m3) with h | h | h | h
+    · exact h
+    · exact absurd (M.facePerm.injective (h.trans hd1)) a3
+    · exact absurd (M.facePerm.injective (h.trans hd2)) a5
+    · exact absurd h (ne1 d3)
+  -- the vertices of the face
+  have e1 : d1.fst = d.snd := hd1 ▸ fst_eq d
+  have e2 : d2.fst = d1.snd := hd2 ▸ fst_eq d1
+  have e3 : d3.fst = d2.snd := hd3 ▸ fst_eq d2
+  have e4 : d.fst = d3.snd := by rw [← h4]; exact fst_eq d3
+  have hxy : G.Adj d.fst d1.fst := e1 ▸ d.adj
+  have hyz : G.Adj d1.fst d2.fst := e2 ▸ d1.adj
+  have hzu : G.Adj d2.fst d3.fst := e3 ▸ d2.adj
+  have hux : G.Adj d3.fst d.fst := e4 ▸ d3.adj
+  have hxz : d.fst ≠ d2.fst := by
+    intro h
+    apply nosymm d
+    rw [← hd1, SimpleGraph.Dart.ext_iff, Prod.ext_iff]
+    simp only [SimpleGraph.Dart.symm_toProd, Prod.fst_swap, Prod.snd_swap]
+    exact ⟨e1, by rw [← e2, ← h]⟩
+  have hyu : d1.fst ≠ d3.fst := by
+    intro h
+    apply nosymm d1
+    rw [← hd2, SimpleGraph.Dart.ext_iff, Prod.ext_iff]
+    simp only [SimpleGraph.Dart.symm_toProd, Prod.fst_swap, Prod.snd_swap]
+    exact ⟨e2, by rw [← e3, ← h]⟩
+  have b1 := hxy.ne; have b2 := hyz.ne; have b3 := hzu.ne; have b4 := hux.ne
+  refine ⟨d.fst, d1.fst, d2.fst, d3.fst, hxy, hyz, hzu, hux, hxz, hyu, ?_,
+    ⟨⟨d, m0⟩, rfl⟩, ⟨⟨d1, m1⟩, rfl⟩, ⟨⟨d2, m2⟩, rfl⟩, ⟨⟨d3, m3⟩, rfl⟩⟩
+  rintro ⟨e, he⟩ ⟨e', he'⟩ hfst
+  apply Subtype.ext
+  simp only at hfst ⊢
+  rcases cover e he with rfl | rfl | rfl | rfl <;> rcases cover e' he' with rfl | rfl | rfl | rfl <;>
+    first
+    | rfl
+    | exact absurd hfst b1 | exact absurd hfst.symm b1
+    | exact absurd hfst b2 | exact absurd hfst.symm b2
+    | exact absurd hfst b3 | exact absurd hfst.symm b3
+    | exact absurd hfst b4 | exact absurd hfst.symm b4
+    | exact absurd hfst hxz | exact absurd hfst.symm hxz
+    | exact absurd hfst hyu | exact absurd hfst.symm hyu
 
 /-! ### Identifying two vertices -/
 
