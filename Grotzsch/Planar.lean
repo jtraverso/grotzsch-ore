@@ -244,7 +244,80 @@ theorem no_crossing_paths (M : PlaneMap G) (o : G.Dart) (h3 : G.CliqueFree 3)
     (hz : z ∈ FaceApex.faceVerts M o) (hu : u ∈ FaceApex.faceVerts M o)
     {b c b' c' : V} (hxb : G.Adj x b) (hbc : G.Adj b c) (hcz : G.Adj c z)
     (hyb' : G.Adj y b') (hb'c' : G.Adj b' c') (hc'u : G.Adj c' u) : False := by
-  sorry
+  have tri : ∀ p q r : V, G.Adj p q → G.Adj p r → G.Adj q r → False := fun p q r hpq hpr hqr =>
+    h3 {p, q, r} (SimpleGraph.is3Clique_triple_iff.mpr ⟨hpq, hpr, hqr⟩)
+  -- the eight vertices are distinct (any coincidence creates a triangle)
+  have h1 : x ≠ b' := by rintro rfl; exact tri x c' u hb'c' hux.symm hc'u
+  have h2 : b ≠ y := by rintro rfl; exact tri b c z hbc hyz hcz
+  have h3' : b ≠ b' := by rintro rfl; exact tri x y b hxy hxb hyb'
+  have h4 : x ≠ z := by rintro rfl; exact tri x b c hxb hcz.symm hbc
+  have h5 : x ≠ c := by rintro rfl; exact tri x y z hxy hcz hyz
+  have h6 : b ≠ z := by rintro rfl; exact tri x y b hxy hxb hyz
+  have h7 : x ≠ c' := by rintro rfl; exact tri x y b' hxy hb'c'.symm hyb'
+  have h8 : b ≠ u := by rintro rfl; exact tri z b c hzu hcz.symm hbc
+  have h9 : b ≠ c' := by rintro rfl; exact tri x b u hxb hux.symm hc'u
+  have h10 : y ≠ c := by rintro rfl; exact tri x y b hxy hxb hbc.symm
+  have h11 : b' ≠ z := by rintro rfl; exact tri b' c' u hb'c' hzu hc'u
+  have h12 : b' ≠ c := by rintro rfl; exact tri y b' z hyb' hyz hcz
+  have h13 : y ≠ u := by rintro rfl; exact tri y b' c' hyb' hc'u.symm hb'c'
+  have h14 : y ≠ c' := by rintro rfl; exact tri y z u hyz hc'u hzu
+  have h15 : b' ≠ u := by rintro rfl; exact tri y z b' hyz hyb' hzu
+  have h16 : z ≠ c' := by rintro rfl; exact tri y b' z hyb' hyz hb'c'
+  have h17 : c ≠ u := by rintro rfl; exact tri x b c hxb hux.symm hbc
+  have h18 : c ≠ c' := by rintro rfl; exact tri z u c hzu hcz.symm hc'u.symm
+  have hxy' := hxy.ne
+  have hyz' := hyz.ne
+  have hzu' := hzu.ne
+  have hux' := hux.ne
+  have s1 := h1.symm; have s2 := h2.symm; have s3 := h3'.symm; have s4 := h4.symm
+  have s5 := h5.symm; have s6 := h6.symm; have s7 := h7.symm; have s8 := h8.symm
+  have s9 := h9.symm; have s10 := h10.symm; have s11 := h11.symm; have s12 := h12.symm
+  have s13 := h13.symm; have s14 := h14.symm; have s15 := h15.symm; have s16 := h16.symm
+  have s17 := h17.symm; have s18 := h18.symm; have sxy := hxy'.symm; have syz := hyz'.symm
+  have szu := hzu'.symm; have sux := hux'.symm
+  have hbc' := hbc.ne; have sbc := hbc.ne.symm; have hbc'' := hb'c'.ne; have sbc' := hb'c'.ne.symm
+  -- the apex graph and its `K₅` minor
+  set A := apexExtend G (FaceApex.faceVerts M o)
+  have hP := isPlanar_apexExtend_face M o hinj
+  have conn2 : ∀ p q : V, G.Adj p q →
+      (A.induce (↑({some p, some q} : Finset (Option V)) : Set (Option V))).Connected := by
+    intro p q hpq
+    rw [← connSet_iff_induce_connected]
+    have := (connSet_singleton A (some q)).insert_adj (a := some p) (Set.mem_singleton _) hpq
+    simpa using this
+  let br : Fin 5 → Finset (Option V) :=
+    ![{none}, {some x, some b}, {some y, some b'}, {some z, some c}, {some u, some c'}]
+  refine cliqueMinorFree_five_of_isPlanar hP ⟨{
+    branch := br
+    branch_nonempty := fun i => by fin_cases i <;> simp [br]
+    branch_connected := fun i => ?_
+    branch_disjoint := fun i j hij => ?_
+    branch_adjacent := fun i j hij => ?_ }⟩
+  · fin_cases i
+    · rw [← connSet_iff_induce_connected]; simpa [br] using connSet_singleton A none
+    · exact conn2 x b hxb
+    · exact conn2 y b' hyb'
+    · exact conn2 z c hcz.symm
+    · exact conn2 u c' hc'u.symm
+  · rw [Finset.disjoint_left]
+    fin_cases i <;> fin_cases j <;> simp_all [br]
+  · have key : ∀ i j : Fin 5, i < j → ∃ p ∈ br i, ∃ q ∈ br j, A.Adj p q := by
+      intro i j hlt
+      fin_cases i <;> fin_cases j <;> first | (exfalso; revert hlt; decide) | skip
+      · exact ⟨none, by simp [br], some x, by simp [br], hx⟩
+      · exact ⟨none, by simp [br], some y, by simp [br], hy⟩
+      · exact ⟨none, by simp [br], some z, by simp [br], hz⟩
+      · exact ⟨none, by simp [br], some u, by simp [br], hu⟩
+      · exact ⟨some x, by simp [br], some y, by simp [br], hxy⟩
+      · exact ⟨some b, by simp [br], some c, by simp [br], hbc⟩
+      · exact ⟨some x, by simp [br], some u, by simp [br], hux.symm⟩
+      · exact ⟨some y, by simp [br], some z, by simp [br], hyz⟩
+      · exact ⟨some b', by simp [br], some c', by simp [br], hb'c'⟩
+      · exact ⟨some z, by simp [br], some u, by simp [br], hzu⟩
+    rcases lt_or_gt_of_ne hij with h | h
+    · exact key i j h
+    · obtain ⟨p, hp, q, hq, hpq⟩ := key j i h
+      exact ⟨q, hq, p, hp, hpq.symm⟩
 
 /-! ### Grötzsch's theorem -/
 
