@@ -25,7 +25,8 @@ Combinatorica 34 (2014) 323–329, arXiv:1209.1173.
 
 The proof uses the *potential* `ρ_G(R) = 5|R| - 3 e(G[R])` and considers a vertex-minimal
 4-critical graph `G` with `ρ_G(V) > 2` (`MinCounter`). Minimality gives (3): every graph with fewer
-vertices all of whose nonempty vertex sets have potential `> 2` is 3-colourable
+vertices that is not 3-colourable has a vertex set of potential `≤ 2` spanning a non-3-colourable
+subgraph (`SmallCritical`); in particular graphs with all potentials `> 2` are 3-colourable
 (`SmallColorable`). Claims 9–13 of the paper restrict the local structure of `G`, and a
 discharging argument then gives `3 |E| ≥ 5 |V|`, a contradiction.
 -/
@@ -59,11 +60,18 @@ def SmallColorable (N : ℕ) : Prop :=
   ∀ (W : Type) [Fintype W] (H : SimpleGraph W), Fintype.card W < N →
     (∀ R : Finset W, R.Nonempty → 2 < pot H R) → H.Colorable 3
 
+/-- Strong form of hypothesis (3): every graph on fewer than `N` vertices that is not
+3-colourable has a nonempty vertex set `S` of potential `≤ 2` whose induced subgraph is still not
+3-colourable (the vertex set of a 4-critical subgraph). -/
+def SmallCritical (N : ℕ) : Prop :=
+  ∀ (W : Type) [Fintype W] (H : SimpleGraph W), Fintype.card W < N → ¬ H.Colorable 3 →
+    ∃ S : Finset W, S.Nonempty ∧ pot H S ≤ 2 ∧ ¬ (H.induce (S : Set W)).Colorable 3
+
 /-- A minimal counterexample to the Kostochka–Yancey bound. -/
 structure MinCounter {V : Type} [Fintype V] (G : SimpleGraph V) : Prop where
   crit : IsCritical4 G
   big : 2 < pot G univ
-  small : SmallColorable (Fintype.card V)
+  small : SmallCritical (Fintype.card V)
 
 /-! ### General facts -/
 
@@ -79,12 +87,21 @@ theorem IsCritical4.three_le_degree {V : Type} [Fintype V] {G : SimpleGraph V}
     (h : IsCritical4 G) (v : V) : 3 ≤ G.degree v := by
   sorry
 
-/-- Minimality of the counterexample gives hypothesis (3). -/
-theorem smallColorable_of_minimal (N : ℕ)
+/-- Minimality of the counterexample gives the strong form of hypothesis (3). -/
+theorem smallCritical_of_minimal (N : ℕ)
     (ih : ∀ (W : Type) [Fintype W] (H : SimpleGraph W), Fintype.card W < N →
       IsCritical4 H → pot H univ ≤ 2) :
-    SmallColorable N := by
+    SmallCritical N := by
   sorry
+
+/-- Hypothesis (3): graphs on fewer vertices whose nonempty sets all have potential `> 2` are
+3-colourable. -/
+theorem SmallCritical.smallColorable {N : ℕ} (h : SmallCritical N) : SmallColorable N := by
+  intro W _ H hW hpot
+  by_contra hcol
+  obtain ⟨S, hS, hpotS, -⟩ := h W H hW hcol
+  have := hpot S hS
+  omega
 
 /-! ### Claims 9–13 for a minimal counterexample -/
 
@@ -142,8 +159,8 @@ theorem pot_univ_le_two : ∀ (N : ℕ) (V : Type) [Fintype V] (G : SimpleGraph 
   intro V _ G hN hG
   by_contra hbig
   push Not at hbig
-  have hsmall : SmallColorable N :=
-    smallColorable_of_minimal N fun W _ H hW hH => ih _ hW W H rfl hH
+  have hsmall : SmallCritical N :=
+    smallCritical_of_minimal N fun W _ H hW hH => ih _ hW W H rfl hH
   have hmin : MinCounter G := ⟨hG, hbig, hN ▸ hsmall⟩
   have h5 := discharging G hG.three_le_degree hmin.deg3_nbrs
   have hE : eIn G univ = G.edgeFinset.card := by
