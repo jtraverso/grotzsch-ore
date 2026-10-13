@@ -205,4 +205,21 @@ theorem GAMin.case3 (hG : GAMin G) : False := by
     exact hG.case31 M hE h0 h1 hzx hy2 hx3 n2 n3 ny0 nx1
   · exact hG.case32 M hE h0 h1 hzy hy2 hzx hx3 n2 n3 ny0 nx1 hxy
 
+/-! ### The theorem -/
+
+theorem grunbaum_aksenov_aux : ∀ (n : ℕ) (V : Type) [Fintype V] (G : SimpleGraph V),
+    Fintype.card V + Nat.card G.edgeSet = n → IsPlanar G → triCount G ≤ 3 → G.Colorable 3 := by
+  intro n
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+  intro V _ G hn hP ht
+  by_contra hc
+  exact GAMin.case3 ⟨hP, ht, hc, fun W _ H hlt hP' ht' => ih _ (hn ▸ hlt) W H rfl hP' ht'⟩
+
+/-- **Grünbaum–Aksenov theorem.** A planar graph with at most three triangles is
+3-colourable. -/
+theorem grunbaum_aksenov (G : SimpleGraph V) (hP : IsPlanar G) (ht : triCount G ≤ 3) :
+    G.Colorable 3 :=
+  grunbaum_aksenov_aux _ V G rfl hP ht
+
 end Grotzsch
