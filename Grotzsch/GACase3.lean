@@ -6,6 +6,7 @@ Authors: Juan Pablo Traverso Gianini
 module
 
 public import Grotzsch.GACases
+public import Grotzsch.Regions
 
 /-!
 # Grünbaum–Aksenov: Case 3
