@@ -9,3 +9,5 @@ public import Grotzsch.Ore
 public import Grotzsch.Planar
 public import Grotzsch.PlusVertex
 public import Grotzsch.PlusEdge
+public import Grotzsch.FacialCycle
+public import Grotzsch.CycleExtension
