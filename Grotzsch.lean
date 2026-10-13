@@ -7,3 +7,4 @@ module
 
 public import Grotzsch.Ore
 public import Grotzsch.Planar
+public import Grotzsch.PlusVertex
