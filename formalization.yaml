@@ -2,22 +2,23 @@
 version: "v0.4"
 
 project:
-  name: "Grötzsch's theorem and Ore's conjecture for k = 4 (Kostochka–Yancey)"
+  name: "Grötzsch's theorem, Ore's conjecture for k = 4 (Kostochka–Yancey) and the Grünbaum–Aksenov theorem"
   description: >-
-    A Lean 4 / Mathlib formalization of two results on 3-colourings of graphs. (1) Kostochka and
-    Yancey's theorem, the case k = 4 of Ore's 1967 conjecture on the minimum number of edges of
-    k-critical graphs: every finite 4-critical graph G satisfies 3|E(G)| ≥ 5|V(G)| - 2. The proof
-    follows their potential method (potential 5|R| - 3e(R), the auxiliary graph Y(G,R,φ), the
-    structural claims on a minimal counterexample, and a discharging argument). (2) Grötzsch's
-    theorem: every finite triangle-free planar graph is 3-colourable, deduced from (1) as in
-    Kostochka–Yancey: a minimal counterexample is 4-critical; if all faces have length at least 5,
-    Euler's formula contradicts (1); otherwise identifying opposite vertices of a 4-face keeps the
-    graph planar and smaller, so both identifications create triangles, giving two vertex-disjoint
-    paths between opposite corners of the face; together with an apex placed inside the face they
-    form a K5 minor of a planar graph, a contradiction (this replaces the topological crossing
-    argument of the paper). Planarity is defined combinatorially, by rotation systems of genus
-    zero (Euler defect 0); as sanity checks on this definition K4 is shown planar and K5 and K3,3
-    non-planar.
+    A Lean 4 / Mathlib formalization of results on 3-colourings of planar graphs. (1) Kostochka
+    and Yancey's theorem, the case k = 4 of Ore's 1967 conjecture on the minimum number of edges
+    of k-critical graphs: every finite 4-critical graph G satisfies 3|E(G)| ≥ 5|V(G)| - 2, by
+    their potential method. (2) Grötzsch's theorem: every finite triangle-free planar graph is
+    3-colourable, deduced from (1) as in Kostochka–Yancey, with the topological crossing
+    argument replaced by a K5-minor argument with an apex inside a face. (3) Aksenov's and
+    Jensen–Thomassen's theorem: a triangle-free planar graph plus one edge is 3-colourable
+    (Borodin–Kostochka–Lidický–Yancey, Theorem 2). (4) A triangle-free planar graph plus one
+    vertex of degree at most 4 is 3-colourable (BKLY, Theorem 4). (5) The Grünbaum–Aksenov
+    theorem: every finite planar graph with at most three triangles is 3-colourable, following
+    BKLY's short proof (Theorem 7), with precolouring extension for 4- and 5-cycles (BKLY
+    Theorem 5, for arbitrary cycles) and a combinatorial region (Jordan-type) theorem for
+    rotation systems making the interiors and outer faces of the paper precise. Planarity is
+    defined combinatorially, by rotation systems of genus zero (Euler defect 0); as sanity checks
+    on this definition K4 is shown planar and K5 and K3,3 non-planar.
   authors:
     - "Juan Pablo Traverso Gianini"
   license: "Apache-2.0"
@@ -47,6 +48,25 @@ sources:
       notion of planarity instead of a topological one.
     license: "unknown"
     author_endorsement: "not-contacted"
+  - title: "Short proofs of coloring theorems on planar graphs"
+    authors:
+      - "Oleg V. Borodin"
+      - "Alexandr V. Kostochka"
+      - "Bernard Lidický"
+      - "Matthew Yancey"
+    id: "arXiv:1211.3981"
+    type: "paper"
+    location: "European Journal of Combinatorics 36 (2014), 314–321; https://arxiv.org/abs/1211.3981"
+    relationship: "formalizes"
+    note: >-
+      Theorems 2, 4 and 7 (Grünbaum–Aksenov) are formalized, and Theorem 5 in the stronger form
+      "every proper 3-colouring of any 4- or 5-cycle of a triangle-free planar graph extends"
+      (not only of faces), proved from Theorems 2 and 4 without faces. Lemma 10 and Cases 1–3 of
+      the proof of Theorem 7 are formalized; the topological steps (crossing paths, interiors and
+      exteriors of separating cycles, the outer 5-face) are replaced by K5-minor arguments and by
+      a combinatorial region theorem for rotation systems proved here.
+    license: "unknown"
+    author_endorsement: "not-contacted"
   - title: "Zur Theorie der diskreten Gebilde, VII: Ein Dreifarbensatz für dreikreisfreie Netze auf der Kugel"
     authors:
       - "Herbert Grötzsch"
@@ -54,6 +74,43 @@ sources:
     location: "Wiss. Z. Martin-Luther-Univ. Halle-Wittenberg Math.-Nat. Reihe 8 (1958/1959), 109–120"
     relationship: "formalizes"
     note: "Original statement of the theorem; the Lean proof follows Kostochka–Yancey, not Grötzsch's argument."
+    license: "unknown"
+    author_endorsement: "n/a"
+  - title: "Grötzsch's theorem on 3-colorings"
+    authors:
+      - "Branko Grünbaum"
+    type: "paper"
+    location: "Michigan Mathematical Journal 10 (1963), 303–310"
+    relationship: "formalizes"
+    note: "Original statement of the three-triangle theorem (its proof was incomplete; corrected by Aksenov). The Lean proof follows BKLY."
+    license: "unknown"
+    author_endorsement: "n/a"
+  - title: "On continuation of 3-colouring of planar graphs (Russian)"
+    authors:
+      - "V. A. Aksenov"
+    type: "paper"
+    location: "Diskretnyi Analiz 26 (1974), 3–19"
+    relationship: "formalizes"
+    note: "First correct proof of the three-triangle theorem and of the one-extra-edge theorem. The Lean proofs follow BKLY."
+    license: "unknown"
+    author_endorsement: "n/a"
+  - title: "A new proof of Grünbaum's 3 color theorem"
+    authors:
+      - "Oleg V. Borodin"
+    type: "paper"
+    location: "Discrete Mathematics 169 (1997), 177–183"
+    relationship: "background"
+    note: "Earlier simpler proof of the Grünbaum–Aksenov theorem; not followed here."
+    license: "unknown"
+    author_endorsement: "n/a"
+  - title: "The color space of a graph"
+    authors:
+      - "Tommy R. Jensen"
+      - "Carsten Thomassen"
+    type: "paper"
+    location: "Journal of Graph Theory 34 (2000), 234–245"
+    relationship: "background"
+    note: "Independent proof that a triangle-free planar graph plus one edge is 3-colourable."
     license: "unknown"
     author_endorsement: "n/a"
   - title: "The Four Color Problem"
@@ -85,17 +142,16 @@ related_formalizations:
       The combinatorial planarity library (plane maps, Euler's formula, face lengths,
       minor-closedness, non-planarity of K5 and K3,3, apex extension inside a face) is the
       author's own earlier development; the 22 modules needed here are included verbatim in this
-      repository under LeanPool/K5MinorFreeChoosability. The Grötzsch and Kostochka–Yancey
-      developments (Grotzsch/) are new.
+      repository under LeanPool/K5MinorFreeChoosability. The developments under Grotzsch/ are new.
 
 status:
   scope: >-
     Proved for finite simple graphs: Kostochka–Yancey's bound 3|E| ≥ 5|V| - 2 for 4-critical
-    graphs (vertex type in `Type`), Grötzsch's theorem (vertex type in any universe), planarity
-    of K4 and non-planarity of K5 and K3,3. Planarity means the existence of a genus-zero
-    rotation system; its equivalence with topological embeddability in the sphere is classical
-    but not formalized. The general Ore conjecture (k ≥ 5) and the general Kostochka–Yancey bound
-    are not formalized.
+    graphs, BKLY Theorems 2 and 4 and the Grünbaum–Aksenov theorem (vertex type in `Type`),
+    Grötzsch's theorem (vertex type in any universe), planarity of K4 and non-planarity of K5 and
+    K3,3. Planarity means the existence of a genus-zero rotation system; its equivalence with
+    topological embeddability in the sphere is classical but not formalized. The general Ore
+    conjecture (k ≥ 5) and the general Kostochka–Yancey bound are not formalized.
   sorry_count: 0
   sorry_in_definitions: 0
   axioms: []
@@ -106,14 +162,19 @@ automation:
       models: ["Claude Opus 5.5"]
       framework: "Claude Code (Anthropic)"
       tool_setup: >-
-        AI-assisted. The human author chose the theorem, the proof route (Kostochka–Yancey) and
-        the reuse of the author's own planarity library, and directed the work. The agent designed the
-        formal architecture (statements of all claims, the minimal-counterexample structure,
-        the K5-minor replacement of the crossing argument), wrote the planar part, the
-        assembly and the packaging, and checked everything with `lake build` and
-        `#print axioms` (Lean v4.35.0-rc3, Mathlib c55e6e786f49471c72fbddbec5415808896aec1e).
+        AI-assisted. The human author chose the theorems, the proof routes (Kostochka–Yancey,
+        Borodin–Kostochka–Lidický–Yancey) and the reuse of the author's own planarity library,
+        and directed the work. The agent designed the formal architecture (statements of all
+        claims, the minimal-counterexample structures, the K5-minor replacements of the crossing
+        arguments, the precolouring-extension gadgets, the region theorem and the combinatorial
+        version of the case analysis of Theorem 7), wrote the remaining proofs (planar part of
+        Grötzsch, precolouring extension, separator reductions and Case 1 of Grünbaum–Aksenov,
+        Lemma 10, assembly, packaging), tested intermediate claims numerically with the certo
+        toolkit (sweeps over all small planar graphs, with a negative control on the torus), and
+        checked everything with `lake build` and `#print axioms` (Lean v4.35.0-rc3, Mathlib
+        c55e6e786f49471c72fbddbec5415808896aec1e).
       cost:
-        wall_time: "about one working day"
+        wall_time: "about three working days"
         spend_usd: "subscription-based"
         hardware: "local machine"
       prompting_notes: "Natural-language instructions in Spanish; proof plans proposed by the agent and approved by the author."
@@ -121,30 +182,37 @@ automation:
       models: ["Aristotle (Harmonic)"]
       framework: "Aristotle CLI"
       tool_setup: >-
-        Used for the proofs of the Kostochka–Yancey claims in Grotzsch/Ore.lean (existence of
-        4-critical subgraphs, minimum degree, the minimality hypothesis, Claims 9–13, (5) and
-        the discharging lemma), given the formal statements and the paper's proof sketches.
-        All returned files were audited: only the assigned `sorry`s were filled, no statement
-        changed, and the results were rebuilt and axiom-checked locally.
+        Used to fill proofs from formal statements and detailed proof plans: the
+        Kostochka–Yancey claims (Grotzsch/Ore.lean); BKLY Theorems 4 and 2
+        (Grotzsch/PlusVertex.lean, Grotzsch/PlusEdge.lean); the facial-cycle theorem
+        (Grotzsch/FacialCycle.lean); the region theorem (Grotzsch/Regions.lean); Case 2, the
+        crossing lemma and the identification step of Grünbaum–Aksenov (Grotzsch/GACases.lean);
+        Cases 3.1 and 3.2 (Grotzsch/GACase3.lean). All returned files were audited against the
+        submitted commit: only the assigned `sorry`s were filled, no statement changed, no other
+        file was taken over, and the results were rebuilt and axiom-checked locally.
       cost:
-        wall_time: "about one hour (three runs)"
+        wall_time: "about a day of compute (ten runs)"
         spend_usd: "not tracked"
         hardware: "API-only"
-      prompting_notes: "Each run received the skeleton file and a paraphrase of the relevant claims of the paper."
+      prompting_notes: "Each run received the skeleton file, the relevant part of the paper and a step-by-step proof plan."
   spend_usd: "subscription-based"
   notes: >-
-    Statements were fixed first (skeleton with `sorry`), then filled; every step was verified
+    Statements were fixed first (skeletons with `sorry`), then filled; every step was verified
     mechanically (no `sorry`, axioms limited to propext, Classical.choice and Quot.sound, and
     identical elaborated types for each Challenge/Solution pair).
 
 fidelity:
   divergences: >-
     Planarity is the combinatorial notion (genus-zero rotation system), not a topological
-    embedding; the classical equivalence is not formalized. In Grötzsch's deduction the
-    topological statement that two paths joining opposite corners of a 4-face must cross is
-    replaced by a K5-minor argument. The Kostochka–Yancey bound is stated for vertex types in
-    `Type` (universe 0); Grötzsch's theorem is stated for arbitrary universes. 4-critical means
-    not 3-colourable and every vertex-deleted and every edge-deleted subgraph is 3-colourable.
+    embedding; the classical equivalence is not formalized. The topological steps of the papers
+    (two paths joining opposite corners of a 4-face must cross; interiors and exteriors of
+    separating 4- and 5-cycles; the outer face) are replaced by K5-minor arguments and by a
+    combinatorial region theorem for rotation systems. The Kostochka–Yancey bound, BKLY
+    Theorems 2 and 4 and the Grünbaum–Aksenov theorem are stated for vertex types in `Type`
+    (universe 0); Grötzsch's theorem for arbitrary universes. 4-critical means not 3-colourable
+    and every vertex-deleted and every edge-deleted subgraph is 3-colourable. A triangle is a
+    3-element vertex set inducing a clique (`IsNClique 3`); the degree bound of Theorem 4 is
+    stated as `Nat.card (H.neighborSet v) ≤ 4`.
 
 review:
   status: "agent-reviewed"
@@ -168,6 +236,21 @@ alignment:
       module: "Challenge"
       status: "proved"
       note: "5|V| ≤ 3|E| + 2 for every finite 4-critical graph."
+    - source: "Aksenov (1974); Jensen–Thomassen (2000); BKLY (2014), Theorem 2"
+      lean: "GrotzschKY.colorable_of_planar_add_edge"
+      module: "Challenge"
+      status: "proved"
+      note: "If deleting the edge uv from H leaves a triangle-free planar graph, H is 3-colourable."
+    - source: "Borodin–Kostochka–Lidický–Yancey (2014), Theorem 4"
+      lean: "GrotzschKY.colorable_of_planar_add_vertex"
+      module: "Challenge"
+      status: "proved"
+      note: "If H - v is triangle-free planar and v has at most four neighbours, H is 3-colourable."
+    - source: "Grünbaum (1963); Aksenov (1974); BKLY (2014), Theorem 7"
+      lean: "GrotzschKY.grunbaum_aksenov"
+      module: "Challenge"
+      status: "proved"
+      note: "Every finite planar graph with at most three triangles is 3-colourable."
     - source: "Sanity check of the planarity definition"
       lean: "GrotzschKY.isPlanar_K4"
       module: "Challenge"
@@ -185,5 +268,4 @@ alignment:
       note: "K3,3 is not planar."
 
 acknowledgements: >-
-  Mathlib and the Lean community; Harmonic's Aristotle for the proofs of the Kostochka–Yancey
-  claims.
+  Mathlib and the Lean community; Harmonic's Aristotle for the proofs listed above.

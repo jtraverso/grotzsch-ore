@@ -8,7 +8,7 @@ module
 public import Mathlib
 
 /-!
-# Grötzsch's theorem and Ore's conjecture for `k = 4`
+# Grötzsch's theorem, Ore's conjecture for `k = 4`, and the Grünbaum–Aksenov theorem
 
 This file states, for finite simple graphs:
 
@@ -16,6 +16,13 @@ This file states, for finite simple graphs:
    (`GrotzschKY.grotzsch`).
 2. **Kostochka–Yancey (2014), Ore's conjecture for `k = 4`.** Every 4-critical graph `G`
    satisfies `3 |E(G)| ≥ 5 |V(G)| - 2` (`GrotzschKY.ore_four`).
+3. **Aksenov (1974); Jensen–Thomassen (2000).** A graph obtained from a triangle-free planar
+   graph by adding one edge is 3-colourable (`GrotzschKY.colorable_of_planar_add_edge`).
+4. **Borodin–Kostochka–Lidický–Yancey (2014), Theorem 4.** A graph obtained from a
+   triangle-free planar graph by adding one vertex of degree at most 4 is 3-colourable
+   (`GrotzschKY.colorable_of_planar_add_vertex`).
+5. **Grünbaum (1963); Aksenov (1974).** Every finite planar graph with at most three triangles
+   is 3-colourable (`GrotzschKY.grunbaum_aksenov`).
 
 ## Planarity
 
@@ -142,6 +149,31 @@ theorem ore_four {V : Type} [Fintype V] (G : SimpleGraph V) (hG : IsCritical4 G)
 /-- **Grötzsch's theorem.** Every finite triangle-free planar graph is 3-colourable. -/
 theorem grotzsch {V : Type*} [Fintype V] (G : SimpleGraph V) (hP : IsPlanar G)
     (h3 : G.CliqueFree 3) : G.Colorable 3 := by
+  sorry
+
+/-! ### Near-triangle-free planar graphs -/
+
+/-- **Aksenov (1974); Jensen–Thomassen (2000).** If deleting the edge `uv` from `H` leaves a
+triangle-free planar graph, then `H` is 3-colourable. -/
+theorem colorable_of_planar_add_edge {V : Type} [Fintype V] (H : SimpleGraph V) {u v : V}
+    (huv : u ≠ v) (hP : IsPlanar (H.deleteEdges {s(u, v)}))
+    (h3 : (H.deleteEdges {s(u, v)}).CliqueFree 3) : H.Colorable 3 := by
+  sorry
+
+/-- **Borodin–Kostochka–Lidický–Yancey (2014), Theorem 4.** If deleting the vertex `v` from `H`
+leaves a triangle-free planar graph and `v` has at most four neighbours, then `H` is
+3-colourable. -/
+theorem colorable_of_planar_add_vertex {V : Type} [Fintype V] (H : SimpleGraph V) (v : V)
+    (hP : IsPlanar (H.induce {w | w ≠ v})) (h3 : (H.induce {w | w ≠ v}).CliqueFree 3)
+    (hv : Nat.card (H.neighborSet v) ≤ 4) : H.Colorable 3 := by
+  sorry
+
+/-! ### The Grünbaum–Aksenov theorem -/
+
+/-- **Grünbaum–Aksenov theorem.** Every finite planar graph with at most three triangles is
+3-colourable. A triangle is a set of three pairwise adjacent vertices. -/
+theorem grunbaum_aksenov {V : Type} [Fintype V] (G : SimpleGraph V) (hP : IsPlanar G)
+    (ht : Nat.card {s : Finset V // G.IsNClique 3 s} ≤ 3) : G.Colorable 3 := by
   sorry
 
 end GrotzschKY

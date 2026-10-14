@@ -1,4 +1,4 @@
-# Mathlib definitions used in Challenge.lean (Grötzsch and Kostochka–Yancey)
+# Mathlib definitions used in Challenge.lean (Grötzsch, Kostochka–Yancey, Grünbaum–Aksenov)
 
 Verbatim excerpts of the Mathlib definitions used by the statements in `Challenge.lean`, at the
 pinned Mathlib revision `c55e6e786f49471c72fbddbec5415808896aec1e` (tag `v4.35.0-rc3`, repository
@@ -272,4 +272,50 @@ inductive EqvGen : α → α → Prop
   | refl x : EqvGen x x
   | symm x y : EqvGen x y → EqvGen y x
   | trans x y z : EqvGen x y → EqvGen y z → EqvGen x z
+```
+
+## Sym2
+
+`Mathlib/Data/Sym/Sym2.lean`, line 100:
+
+```lean
+/-- `Sym2 α` is the symmetric square of `α`, which, in other words, is the
+type of unordered pairs.
+
+It is equivalent in a natural way to multisets of cardinality 2 (see
+`Sym2.equivMultiset`).
+-/
+abbrev Sym2 (α : Type u) := Quot (Sym2.Rel α)
+```
+
+## Sym2.mk
+
+`Mathlib/Data/Sym/Sym2.lean`, line 103:
+
+```lean
+/-- Constructor for `Sym2`. This is the quotient map `α × α → Sym2 α`. -/
+protected abbrev Sym2.mk {α : Type*} (a b : α) : Sym2 α := Quot.mk (Sym2.Rel α) (a, b)
+```
+
+## Notation s(x, y)
+
+`Mathlib/Data/Sym/Sym2.lean`, line 109:
+
+```lean
+/-- `s(x, y)` is an unordered pair,
+which is to say a pair modulo the action of the symmetric group.
+
+It is equal to `Sym2.mk (x, y)`. -/
+notation3 "s(" x ", " y ")" => Sym2.mk x y
+```
+
+## Nat.card
+
+`Mathlib/SetTheory/Cardinal/Finite.lean`, line 41:
+
+```lean
+/-- `Nat.card α` is the cardinality of `α` as a natural number.
+  If `α` is infinite, `Nat.card α = 0`. -/
+protected def card (α : Type*) : ℕ :=
+  toNat (mk α)
 ```

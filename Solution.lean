@@ -15,7 +15,10 @@ The definitions below are verbatim copies of those in `Challenge.lean`. They coi
 definitionally with the definitions of the `LeanPool.K5MinorFreeChoosability` planarity library
 included in this repository (`isPlanar_iff_lib`), and the theorems are proved from that library
 and from the `Grotzsch` development (`Grotzsch.Ore`: Kostochka–Yancey bound; `Grotzsch.Planar`:
-Grötzsch's theorem for `V : Type`, transferred here to arbitrary universes).
+Grötzsch's theorem for `V : Type`, transferred here to arbitrary universes; `Grotzsch.PlusEdge`
+and `Grotzsch.PlusVertex`: BKLY Theorems 2 and 4; `Grotzsch.GACase3`: the Grünbaum–Aksenov
+theorem, on top of the region theorem `Grotzsch.Regions` and the precolouring extension
+`Grotzsch.CycleExtension`).
 -/
 
 @[expose] public section
@@ -130,5 +133,32 @@ theorem grotzsch {V : Type*} [Fintype V] (G : SimpleGraph V) (hP : IsPlanar G)
     LeanPool.K5MinorFreeChoosability.isPlanar_of_iso ((isPlanar_iff_lib G).1 hP) iso.symm
   have h3' : (G.map e.toEmbedding).CliqueFree 3 := h3.comap iso.symm.toEmbedding.isContained
   exact (Grotzsch.grotzsch _ hP' h3').of_hom iso.toHom
+
+/-! ### Near-triangle-free planar graphs -/
+
+/-- **Aksenov (1974); Jensen–Thomassen (2000).** If deleting the edge `uv` from `H` leaves a
+triangle-free planar graph, then `H` is 3-colourable. -/
+theorem colorable_of_planar_add_edge {V : Type} [Fintype V] (H : SimpleGraph V) {u v : V}
+    (huv : u ≠ v) (hP : IsPlanar (H.deleteEdges {s(u, v)}))
+    (h3 : (H.deleteEdges {s(u, v)}).CliqueFree 3) : H.Colorable 3 :=
+  Grotzsch.colorable_of_sdiff_edge H huv ((isPlanar_iff_lib _).1 hP) h3
+
+/-- **Borodin–Kostochka–Lidický–Yancey (2014), Theorem 4.** If deleting the vertex `v` from `H`
+leaves a triangle-free planar graph and `v` has at most four neighbours, then `H` is
+3-colourable. -/
+theorem colorable_of_planar_add_vertex {V : Type} [Fintype V] (H : SimpleGraph V) (v : V)
+    (hP : IsPlanar (H.induce {w | w ≠ v})) (h3 : (H.induce {w | w ≠ v}).CliqueFree 3)
+    (hv : Nat.card (H.neighborSet v) ≤ 4) : H.Colorable 3 := by
+  classical
+  refine Grotzsch.colorable_of_induce_planar_cliqueFree H v ((isPlanar_iff_lib _).1 hP) h3 ?_
+  rwa [Nat.card_eq_fintype_card, SimpleGraph.card_neighborSet_eq_degree] at hv
+
+/-! ### The Grünbaum–Aksenov theorem -/
+
+/-- **Grünbaum–Aksenov theorem.** Every finite planar graph with at most three triangles is
+3-colourable. A triangle is a set of three pairwise adjacent vertices. -/
+theorem grunbaum_aksenov {V : Type} [Fintype V] (G : SimpleGraph V) (hP : IsPlanar G)
+    (ht : Nat.card {s : Finset V // G.IsNClique 3 s} ≤ 3) : G.Colorable 3 :=
+  Grotzsch.grunbaum_aksenov G ((isPlanar_iff_lib G).1 hP) ht
 
 end GrotzschKY

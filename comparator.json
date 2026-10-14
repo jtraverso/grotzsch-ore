@@ -6,9 +6,16 @@
     "GrotzschKY.ore_four",
     "GrotzschKY.isPlanar_K4",
     "GrotzschKY.not_isPlanar_K5",
-    "GrotzschKY.not_isPlanar_K33"
+    "GrotzschKY.not_isPlanar_K33",
+    "GrotzschKY.colorable_of_planar_add_edge",
+    "GrotzschKY.colorable_of_planar_add_vertex",
+    "GrotzschKY.grunbaum_aksenov"
   ],
   "definition_names": [],
-  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
   "enable_nanoda": true
 }
